@@ -202,38 +202,6 @@ export class DebugManager {
     this.updateDebugInfo();
   }
 
-  // Create debug controls panel
-  createDebugControls() {
-    if (this.debugControlsElement) return;
-
-    // Create controls container
-    const controls = document.createElement("div");
-    controls.id = "debug-controls";
-    controls.style.position = "absolute";
-    controls.style.top = "50px";
-    controls.style.right = "10px";
-    controls.style.backgroundColor = "rgba(26, 32, 44, 0.8)";
-    controls.style.padding = "10px";
-    controls.style.borderRadius = "4px";
-    controls.style.fontFamily =
-      '"JetBrains Mono", "Fira Code", Consolas, monospace';
-    controls.style.fontSize = "12px";
-    controls.style.color = "#E2E8F0";
-    controls.style.zIndex = "1000";
-    controls.style.borderLeft = "3px solid #68D391";
-    document.body.appendChild(controls);
-
-    // Add debug info title
-    const debugTitle = document.createElement("div");
-    debugTitle.textContent = "Debug Controls";
-    debugTitle.style.fontWeight = "bold";
-    debugTitle.style.marginBottom = "10px";
-    debugTitle.style.textAlign = "center";
-    controls.appendChild(debugTitle);
-
-    this.debugControlsElement = controls;
-  }
-
   // Remove debug info panel
   removeDebugInfoPanel() {
     if (this.debugInfoElement) {
