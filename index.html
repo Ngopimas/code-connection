@@ -45,8 +45,11 @@
     <p id="restart">DEBUG & RESTART</p>
   </div>
 
+  <!-- Load character reference first as it's used by other modules -->
   <script src="character-reference.js"></script>
-  <script src="index.js"></script>
+
+  <!-- Load the game modules -->
+  <script type="module" src="main.js"></script>
 </body>
 
 </html>

@@ -205,8 +205,8 @@
             <div class="option-group">
                 <label class="option-label">Scale</label>
                 <div class="slider-container">
-                    <input type="range" id="scale-slider" min="0.5" max="3" step="0.1" value="1">
-                    <span class="value-display" id="scale-value">1.0</span>
+                    <input type="range" id="scale-slider" min="0.5" max="5" step="0.1" value="3">
+                    <span class="value-display" id="scale-value">3.0</span>
                 </div>
             </div>
 
@@ -308,7 +308,7 @@
 
         // Animation state
         let currentPhase = 'waiting';
-        let scale = 1.0;
+        let scale = 3.0;
         let speed = 1.0;
         let bgColor = '#718096';
         let showGrid = false;
@@ -530,7 +530,7 @@
 
             // Make the offscreen canvas large enough
             // Using a higher resolution for better scaling quality
-            const resolutionMultiplier = 2; // Higher resolution for better quality
+            const resolutionMultiplier = 5; // Higher resolution for better quality
             offscreenCanvas.width = 100 * resolutionMultiplier;
             offscreenCanvas.height = 100 * resolutionMultiplier;
 
