@@ -71,8 +71,10 @@ const runningSpeed = 4; // was walkingSpeed
 const migratingSpeed = 2; // was transitioningSpeed
 const crashingSpeed = 2; // was fallingSpeed
 
-const heroWidth = 17; // 24
-const heroHeight = 30; // 40
+// Constants for hero dimensions - using the shared reference
+// const heroWidth = CharacterReference.heroWidth;
+// const heroHeight = CharacterReference.heroHeight;
+// Using CharacterReference.heroWidth and CharacterReference.heroHeight directly instead
 
 const canvas = document.getElementById("game");
 canvas.width = window.innerWidth; // Make the Canvas full screen
@@ -132,11 +134,55 @@ if (DEBUG_MODE) {
   // Prevent touchstart from triggering play
   debugButton.addEventListener("touchstart", function (e) {
     e.stopPropagation();
+    e.preventDefault();
+  });
+
+  // Handle touchend on debug button
+  debugButton.addEventListener("touchend", function (e) {
+    e.stopPropagation();
+    e.preventDefault();
+    // Manually toggle debug mode on touchend
+    debugMode = !debugMode;
+
+    if (debugMode) {
+      debugButton.textContent = "Disable Debug Mode";
+      debugButton.style.backgroundColor = "#68D391"; // Green when active
+
+      // Show debug info on screen
+      const debugInfo = document.createElement("div");
+      debugInfo.id = "debug-info";
+      debugInfo.style.position = "absolute";
+      debugInfo.style.bottom = "10px";
+      debugInfo.style.right = "10px";
+      debugInfo.style.backgroundColor = "rgba(26, 32, 44, 0.8)";
+      debugInfo.style.padding = "10px";
+      debugInfo.style.borderRadius = "4px";
+      debugInfo.style.fontFamily =
+        '"JetBrains Mono", "Fira Code", Consolas, monospace';
+      debugInfo.style.fontSize = "12px";
+      debugInfo.style.color = "#E2E8F0";
+      debugInfo.style.maxWidth = "200px";
+      debugInfo.style.zIndex = "1000";
+      debugInfo.style.borderLeft = "3px solid #68D391";
+      document.querySelector(".container").appendChild(debugInfo);
+
+      updateDebugInfo();
+    } else {
+      debugButton.textContent = "Enable Debug Mode";
+      debugButton.style.backgroundColor = "#4A5568"; // Grey when inactive
+
+      // Remove debug info
+      const debugInfo = document.getElementById("debug-info");
+      if (debugInfo) {
+        debugInfo.remove();
+      }
+    }
   });
 
   // Toggle debug mode
   debugButton.addEventListener("click", function (e) {
-    e.stopPropagation(); // Prevent event from bubbling up to document
+    e.stopPropagation();
+    e.preventDefault();
     debugMode = !debugMode;
 
     if (debugMode) {
@@ -406,7 +452,8 @@ function animate(timestamp) {
         }
       } else {
         // If hero won't reach another platform then limit it's position at the end of the pole
-        const maxHeroX = sticks.last().x + sticks.last().length + heroWidth;
+        const maxHeroX =
+          sticks.last().x + sticks.last().length + CharacterReference.heroWidth;
         if (heroX > maxHeroX) {
           heroX = maxHeroX;
           phase = gameStatus.crashing;
@@ -506,6 +553,19 @@ restartButton.addEventListener("click", function (event) {
   restartButton.style.display = "none";
 });
 
+// Add touch event handlers for the restart button
+restartButton.addEventListener("touchstart", function (event) {
+  event.stopPropagation();
+  event.preventDefault();
+});
+
+restartButton.addEventListener("touchend", function (event) {
+  event.stopPropagation();
+  event.preventDefault();
+  resetGame();
+  restartButton.style.display = "none";
+});
+
 function drawPlatforms() {
   platforms.forEach(({ x, w }) => {
     // Draw platform
@@ -598,110 +658,18 @@ function drawPlatforms() {
 }
 
 function drawHero() {
-  ctx.save();
-  ctx.fillStyle = "black";
-  ctx.translate(
-    heroX - heroWidth / 2,
-    heroY + canvasHeight - platformHeight - heroHeight / 2
+  // Map the game phase to the character reference phase
+  let characterPhase = phase;
+
+  // Use the shared character reference implementation
+  CharacterReference.drawCharacter(
+    ctx,
+    characterPhase,
+    heroX,
+    heroY,
+    canvasHeight,
+    platformHeight
   );
-
-  // Body
-  drawRoundedRect(
-    -heroWidth / 2,
-    -heroHeight / 2,
-    heroWidth,
-    heroHeight - 4,
-    5
-  );
-
-  // Legs
-  const legDistance = 5;
-  ctx.beginPath();
-  ctx.arc(legDistance, 11.5, 3, 0, Math.PI * 2, false);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(-legDistance, 11.5, 3, 0, Math.PI * 2, false);
-  ctx.fill();
-
-  // Eyes/Glasses
-  ctx.beginPath();
-  ctx.fillStyle = "white";
-  ctx.arc(3, -7, 3, 0, Math.PI * 2, false);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(-3, -7, 3, 0, Math.PI * 2, false);
-  ctx.fill();
-
-  // Glasses frame
-  ctx.strokeStyle = "#333";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(3, -7, 3.5, 0, Math.PI * 2, false);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(-3, -7, 3.5, 0, Math.PI * 2, false);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(0, -7);
-  ctx.lineTo(-3, -7);
-  ctx.moveTo(0, -7);
-  ctx.lineTo(3, -7);
-  ctx.stroke();
-
-  // Laptop - show it when coding or deploying
-  if (phase === gameStatus.coding || phase === gameStatus.deploying) {
-    ctx.fillStyle = "#666";
-    ctx.fillRect(-8, -3, 16, 2); // laptop base
-    ctx.fillStyle = "#333";
-    ctx.fillRect(-7, -15, 14, 12); // laptop screen
-    ctx.fillStyle = "#6495ED"; // cornflower blue for screen
-    ctx.fillRect(-6, -14, 12, 10);
-    ctx.fillStyle = "#FFF";
-
-    // Animated code lines on screen when coding
-    if (phase === gameStatus.coding) {
-      // More active coding animation
-      const time = Date.now() / 200;
-      const lineLength1 = 5 + Math.sin(time) * 3;
-      const lineLength2 = 7 + Math.cos(time * 1.1) * 2;
-      const lineLength3 = 4 + Math.sin(time * 0.7) * 4;
-
-      ctx.fillRect(-5, -13, lineLength1, 1);
-      ctx.fillRect(-5, -11, lineLength2, 1);
-      ctx.fillRect(-5, -9, lineLength3, 1);
-      ctx.fillRect(-5, -7, 5, 1);
-    } else {
-      // Static code lines when deploying
-      ctx.fillRect(-5, -13, 8, 1);
-      ctx.fillRect(-5, -11, 6, 1);
-      ctx.fillRect(-5, -9, 9, 1);
-      ctx.fillRect(-5, -7, 5, 1);
-    }
-  }
-
-  // Headphones/Gaming headset
-  ctx.fillStyle = "#444";
-  ctx.fillRect(-8, -19, 16, 3); // headband
-  ctx.beginPath();
-  ctx.arc(-8, -17, 2, 0, Math.PI * 2, false); // left earpiece
-  ctx.arc(8, -17, 2, 0, Math.PI * 2, false); // right earpiece
-  ctx.fill();
-
-  ctx.restore();
-}
-
-function drawRoundedRect(x, y, width, height, radius) {
-  ctx.beginPath();
-  ctx.moveTo(x, y + radius);
-  ctx.lineTo(x, y + height - radius);
-  ctx.arcTo(x, y + height, x + radius, y + height, radius);
-  ctx.lineTo(x + width - radius, y + height);
-  ctx.arcTo(x + width, y + height, x + width, y + height - radius, radius);
-  ctx.lineTo(x + width, y + radius);
-  ctx.arcTo(x + width, y, x + width - radius, y, radius);
-  ctx.lineTo(x + radius, y);
-  ctx.arcTo(x, y, x, y + radius, radius);
-  ctx.fill();
 }
 
 function drawSticks() {

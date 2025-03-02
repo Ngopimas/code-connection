@@ -30,6 +30,20 @@ button,
   -webkit-touch-callout: none;
 }
 
+/* Ensure debug button is clickable */
+#debug-mode {
+  touch-action: manipulation;
+  pointer-events: auto;
+  z-index: 1000; /* Ensure it's above other elements */
+}
+
+/* Ensure restart button is clickable */
+#restart {
+  touch-action: manipulation;
+  pointer-events: auto;
+  z-index: 1000; /* Ensure it's above other elements */
+}
+
 .container {
   display: flex;
   flex-direction: column;

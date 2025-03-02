@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Character Animation Showcase</title>
+    <style>
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            background-color: #2D3748;
+            color: #E2E8F0;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #63B3ED;
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #A0AEC0;
+            font-size: 16px;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .main-canvas-container {
+            background-color: #4A5568;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+
+        #main-canvas {
+            background-color: #718096;
+            border-radius: 4px;
+            width: 100%;
+            height: 300px;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .control-button {
+            background-color: #2D3748;
+            color: #E2E8F0;
+            border: 2px solid #63B3ED;
+            border-radius: 4px;
+            padding: 10px 15px;
+            font-family: inherit;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .control-button:hover {
+            background-color: #63B3ED;
+            color: #1A202C;
+        }
+
+        .control-button.active {
+            background-color: #63B3ED;
+            color: #1A202C;
+        }
+
+        .animation-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+            width: 100%;
+        }
+
+        .animation-card {
+            background-color: #4A5568;
+            border-radius: 8px;
+            padding: 15px;
+            width: 150px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .animation-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .animation-card.active {
+            border: 2px solid #63B3ED;
+        }
+
+        .animation-title {
+            font-size: 16px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .mini-canvas {
+            background-color: #718096;
+            border-radius: 4px;
+            width: 120px;
+            height: 120px;
+        }
+
+        .options-panel {
+            background-color: #4A5568;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .option-group {
+            margin-bottom: 15px;
+        }
+
+        .option-label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            flex-grow: 1;
+        }
+
+        .value-display {
+            width: 40px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="color"] {
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Interactive Character Showcase</h1>
+    <div class="subtitle">Explore character animations</div>
+
+    <div class="container">
+        <div class="main-canvas-container">
+            <canvas id="main-canvas"></canvas>
+
+            <div class="controls">
+                <button class="control-button active" data-phase="waiting">Waiting</button>
+                <button class="control-button" data-phase="coding">Coding</button>
+                <button class="control-button" data-phase="deploying">Deploying</button>
+                <button class="control-button" data-phase="running">Running</button>
+                <button class="control-button" data-phase="crashing">Crashing</button>
+                <button class="control-button" id="play-all-btn">Play All</button>
+            </div>
+        </div>
+
+        <div class="options-panel">
+            <div class="option-group">
+                <label class="option-label">Scale</label>
+                <div class="slider-container">
+                    <input type="range" id="scale-slider" min="0.5" max="3" step="0.1" value="1">
+                    <span class="value-display" id="scale-value">1.0</span>
+                </div>
+            </div>
+
+            <div class="option-group">
+                <label class="option-label">Animation Speed</label>
+                <div class="slider-container">
+                    <input type="range" id="speed-slider" min="0.1" max="2" step="0.1" value="1">
+                    <span class="value-display" id="speed-value">1.0</span>
+                </div>
+            </div>
+
+            <div class="option-group">
+                <label class="option-label">Background Color</label>
+                <div class="color-picker-container">
+                    <input type="color" id="bg-color-picker" value="#718096">
+                    <span id="bg-color-value">#718096</span>
+                </div>
+            </div>
+
+            <div class="option-group">
+                <div class="checkbox-container">
+                    <input type="checkbox" id="show-grid-checkbox">
+                    <label for="show-grid-checkbox">Show Grid</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="animation-grid">
+            <div class="animation-card active" data-phase="waiting">
+                <div class="animation-title">Waiting</div>
+                <canvas class="mini-canvas" id="mini-waiting-canvas" width="120" height="120"></canvas>
+            </div>
+
+            <div class="animation-card" data-phase="coding">
+                <div class="animation-title">Coding</div>
+                <canvas class="mini-canvas" id="mini-coding-canvas" width="120" height="120"></canvas>
+            </div>
+
+            <div class="animation-card" data-phase="deploying">
+                <div class="animation-title">Deploying</div>
+                <canvas class="mini-canvas" id="mini-deploying-canvas" width="120" height="120"></canvas>
+            </div>
+
+            <div class="animation-card" data-phase="running">
+                <div class="animation-title">Running</div>
+                <canvas class="mini-canvas" id="mini-running-canvas" width="120" height="120"></canvas>
+            </div>
+
+            <div class="animation-card" data-phase="crashing">
+                <div class="animation-title">Crashing</div>
+                <canvas class="mini-canvas" id="mini-crashing-canvas" width="120" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="character-reference.js"></script>
+    <script>
+        // Main canvas setup
+        const mainCanvas = document.getElementById('main-canvas');
+        const mainCtx = mainCanvas.getContext('2d');
+
+        // Set canvas dimensions based on its display size
+        function resizeMainCanvas() {
+            const displayWidth = mainCanvas.clientWidth;
+            const displayHeight = mainCanvas.clientHeight;
+
+            if (mainCanvas.width !== displayWidth || mainCanvas.height !== displayHeight) {
+                mainCanvas.width = displayWidth;
+                mainCanvas.height = displayHeight;
+            }
+        }
+
+        // Call once to set initial size
+        resizeMainCanvas();
+
+        // Call again if window is resized
+        window.addEventListener('resize', resizeMainCanvas);
+
+        // Mini canvases setup
+        const miniCanvasIds = [
+            'mini-waiting-canvas',
+            'mini-coding-canvas',
+            'mini-deploying-canvas',
+            'mini-running-canvas',
+            'mini-crashing-canvas'
+        ];
+        const phases = ['waiting', 'coding', 'deploying', 'running', 'crashing'];
+        const miniCanvasContexts = [];
+
+        // Set up each mini canvas
+        miniCanvasIds.forEach((id, index) => {
+            const canvas = document.getElementById(id);
+            const ctx = canvas.getContext('2d');
+            miniCanvasContexts.push({
+                ctx: ctx,
+                phase: phases[index]
+            });
+        });
+
+        // Animation state
+        let currentPhase = 'waiting';
+        let scale = 1.0;
+        let speed = 1.0;
+        let bgColor = '#718096';
+        let showGrid = false;
+        let playAllMode = false;
+        let playAllIndex = 0;
+        let playAllTimer = null;
+
+        // Control buttons
+        const controlButtons = document.querySelectorAll('.control-button[data-phase]');
+        controlButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Stop play all mode if active
+                if (playAllMode) {
+                    stopPlayAll();
+                }
+
+                // Update active button
+                controlButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+
+                // Update current phase
+                currentPhase = button.getAttribute('data-phase');
+
+                // Update active animation card
+                updateActiveAnimationCard();
+            });
+        });
+
+        // Animation cards
+        const animationCards = document.querySelectorAll('.animation-card');
+        animationCards.forEach(card => {
+            card.addEventListener('click', () => {
+                // Stop play all mode if active
+                if (playAllMode) {
+                    stopPlayAll();
+                }
+
+                // Update active card
+                animationCards.forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+
+                // Update current phase
+                currentPhase = card.getAttribute('data-phase');
+
+                // Update active control button
+                updateActiveControlButton();
+            });
+        });
+
+        // Play All button
+        const playAllBtn = document.getElementById('play-all-btn');
+        playAllBtn.addEventListener('click', togglePlayAll);
+
+        function togglePlayAll() {
+            if (playAllMode) {
+                stopPlayAll();
+            } else {
+                startPlayAll();
+            }
+        }
+
+        function startPlayAll() {
+            playAllMode = true;
+            playAllBtn.textContent = 'Stop';
+            playAllBtn.classList.add('active');
+
+            // Start from the first phase
+            playAllIndex = 0;
+            currentPhase = phases[playAllIndex];
+
+            // Update UI
+            updateActiveControlButton();
+            updateActiveAnimationCard();
+
+            // Set timer to cycle through phases
+            playAllTimer = setInterval(() => {
+                playAllIndex = (playAllIndex + 1) % phases.length;
+                currentPhase = phases[playAllIndex];
+
+                // Update UI
+                updateActiveControlButton();
+                updateActiveAnimationCard();
+            }, 2000); // Change every 2 seconds
+        }
+
+        function stopPlayAll() {
+            playAllMode = false;
+            playAllBtn.textContent = 'Play All';
+            playAllBtn.classList.remove('active');
+
+            if (playAllTimer) {
+                clearInterval(playAllTimer);
+                playAllTimer = null;
+            }
+        }
+
+        function updateActiveControlButton() {
+            controlButtons.forEach(btn => {
+                if (btn.getAttribute('data-phase') === currentPhase) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        function updateActiveAnimationCard() {
+            animationCards.forEach(card => {
+                if (card.getAttribute('data-phase') === currentPhase) {
+                    card.classList.add('active');
+                } else {
+                    card.classList.remove('active');
+                }
+            });
+        }
+
+        // Options panel controls
+        const scaleSlider = document.getElementById('scale-slider');
+        const scaleValue = document.getElementById('scale-value');
+        scaleSlider.addEventListener('input', () => {
+            scale = parseFloat(scaleSlider.value);
+            scaleValue.textContent = scale.toFixed(1);
+        });
+
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValue = document.getElementById('speed-value');
+        speedSlider.addEventListener('input', () => {
+            speed = parseFloat(speedSlider.value);
+            speedValue.textContent = speed.toFixed(1);
+        });
+
+        const bgColorPicker = document.getElementById('bg-color-picker');
+        const bgColorValue = document.getElementById('bg-color-value');
+        bgColorPicker.addEventListener('input', () => {
+            bgColor = bgColorPicker.value;
+            bgColorValue.textContent = bgColor;
+        });
+
+        const showGridCheckbox = document.getElementById('show-grid-checkbox');
+        showGridCheckbox.addEventListener('change', () => {
+            showGrid = showGridCheckbox.checked;
+        });
+
+        // Draw grid on canvas
+        function drawGrid(ctx, width, height, cellSize = 10) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 0.5;
+
+            // Draw vertical lines
+            for (let x = 0; x <= width; x += cellSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, height);
+                ctx.stroke();
+            }
+
+            // Draw horizontal lines
+            for (let y = 0; y <= height; y += cellSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+
+            // Draw center lines
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+
+            // Vertical center line
+            ctx.beginPath();
+            ctx.moveTo(width / 2, 0);
+            ctx.lineTo(width / 2, height);
+            ctx.stroke();
+
+            // Horizontal center line
+            ctx.beginPath();
+            ctx.moveTo(0, height / 2);
+            ctx.lineTo(width, height / 2);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Main animation function
+        function animate() {
+            // Adjust animation timing based on speed
+            const originalDateNow = Date.now;
+            Date.now = function () {
+                return originalDateNow() * speed;
+            };
+
+            // Clear main canvas
+            mainCtx.fillStyle = bgColor;
+            mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+
+            // Draw grid if enabled
+            if (showGrid) {
+                drawGrid(mainCtx, mainCanvas.width, mainCanvas.height);
+            }
+
+            // Draw platform on main canvas
+            const platformHeight = 50;
+            mainCtx.fillStyle = "#2D3748";
+            mainCtx.fillRect(0, mainCanvas.height - platformHeight, mainCanvas.width, platformHeight);
+
+            // Draw character on main canvas with scaling
+            // Create an offscreen canvas to draw the character at normal scale
+            const offscreenCanvas = document.createElement('canvas');
+            const offscreenCtx = offscreenCanvas.getContext('2d', { alpha: true });
+
+            // Make the offscreen canvas large enough
+            // Using a higher resolution for better scaling quality
+            const resolutionMultiplier = 2; // Higher resolution for better quality
+            offscreenCanvas.width = 100 * resolutionMultiplier;
+            offscreenCanvas.height = 100 * resolutionMultiplier;
+
+            // Clear the offscreen canvas with a transparent background
+            offscreenCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+
+            // Draw a platform on the offscreen canvas
+            const offscreenPlatformHeight = 20 * resolutionMultiplier;
+            offscreenCtx.fillStyle = "#2D3748";
+            offscreenCtx.fillRect(0, offscreenCanvas.height - offscreenPlatformHeight, offscreenCanvas.width, offscreenPlatformHeight);
+
+            // Draw the character centered on the offscreen canvas
+            // Scale up the drawing for higher resolution
+            offscreenCtx.save();
+            offscreenCtx.scale(resolutionMultiplier, resolutionMultiplier);
+            CharacterReference.drawCharacter(
+                offscreenCtx,
+                currentPhase,
+                offscreenCanvas.width / (2 * resolutionMultiplier),
+                0,
+                offscreenCanvas.height / resolutionMultiplier,
+                offscreenPlatformHeight / resolutionMultiplier
+            );
+            offscreenCtx.restore();
+
+            // Now draw the scaled offscreen canvas to the main canvas
+            const scaledWidth = (offscreenCanvas.width / resolutionMultiplier) * scale;
+            const scaledHeight = (offscreenCanvas.height / resolutionMultiplier) * scale;
+
+            // Position so the character is centered horizontally
+            const destX = mainCanvas.width / 2 - scaledWidth / 2;
+
+            // Position so the bottom of the scaled canvas aligns with the platform
+            const destY = mainCanvas.height - platformHeight - scaledHeight + (offscreenPlatformHeight / resolutionMultiplier) * scale;
+
+            // Enable image smoothing for better quality
+            mainCtx.imageSmoothingEnabled = true;
+            mainCtx.imageSmoothingQuality = 'high';
+
+            mainCtx.drawImage(
+                offscreenCanvas,
+                0, 0, offscreenCanvas.width, offscreenCanvas.height,
+                destX, destY, scaledWidth, scaledHeight
+            );
+
+            // Draw mini canvases
+            miniCanvasContexts.forEach(({ ctx, phase }) => {
+                // Clear mini canvas
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, 120, 120);
+
+                // Draw platform
+                const miniPlatformHeight = 30;
+                ctx.fillStyle = "#2D3748";
+                ctx.fillRect(0, 120 - miniPlatformHeight, 120, miniPlatformHeight);
+
+                // Draw character
+                CharacterReference.drawCharacter(ctx, phase, 60, 0, 120, miniPlatformHeight);
+            });
+
+            // Restore original Date.now
+            Date.now = originalDateNow;
+
+            // Continue animation loop
+            requestAnimationFrame(animate);
+        }
+
+        // Start animation
+        animate();
+    </script>
+</body>
+
+</html>

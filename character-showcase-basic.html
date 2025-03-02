@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basic Character Showcase</title>
+    <style>
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+            background-color: #2D3748;
+            color: #E2E8F0;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #63B3ED;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .animation-card {
+            background-color: #4A5568;
+            border-radius: 8px;
+            padding: 15px;
+            width: 200px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .animation-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        canvas {
+            background-color: #718096;
+            border-radius: 4px;
+        }
+
+        .description {
+            margin-top: 15px;
+            font-size: 14px;
+            text-align: center;
+            color: #CBD5E0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Character Animation Showcase</h1>
+
+    <div class="container">
+        <div class="animation-card">
+            <div class="animation-title">Waiting</div>
+            <canvas id="waiting-canvas" width="150" height="150"></canvas>
+            <div class="description">Standing with laptop in left hand</div>
+        </div>
+
+        <div class="animation-card">
+            <div class="animation-title">Coding</div>
+            <canvas id="coding-canvas" width="150" height="150"></canvas>
+            <div class="description">Sitting with laptop open, animated code lines</div>
+        </div>
+
+        <div class="animation-card">
+            <div class="animation-title">Deploying</div>
+            <canvas id="deploying-canvas" width="150" height="150"></canvas>
+            <div class="description">Sitting with laptop open, static code lines</div>
+        </div>
+
+        <div class="animation-card">
+            <div class="animation-title">Running</div>
+            <canvas id="running-canvas" width="150" height="150"></canvas>
+            <div class="description">Moving with laptop tucked under right arm</div>
+        </div>
+
+        <div class="animation-card">
+            <div class="animation-title">Crashing</div>
+            <canvas id="crashing-canvas" width="150" height="150"></canvas>
+            <div class="description">Falling with laptop above head</div>
+        </div>
+    </div>
+
+    <script src="character-reference.js"></script>
+    <script>
+        // Constants for canvas dimensions
+        const canvasHeight = 150;
+        const platformHeight = 30;
+
+        // Initialize all canvases
+        const canvasIds = ['waiting-canvas', 'coding-canvas', 'deploying-canvas', 'running-canvas', 'crashing-canvas'];
+        const phases = ['waiting', 'coding', 'deploying', 'running', 'crashing'];
+        const canvasContexts = [];
+
+        // Set up each canvas
+        canvasIds.forEach((id, index) => {
+            const canvas = document.getElementById(id);
+            const ctx = canvas.getContext('2d');
+            canvasContexts.push({
+                ctx: ctx,
+                phase: phases[index]
+            });
+        });
+
+        // Animation function
+        function animate() {
+            canvasContexts.forEach(({ ctx, phase }) => {
+                // Clear canvas
+                ctx.clearRect(0, 0, 150, 150);
+
+                // Draw platform
+                ctx.fillStyle = "#2D3748";
+                ctx.fillRect(0, canvasHeight - platformHeight, 150, platformHeight);
+
+                // Draw character
+                CharacterReference.drawCharacter(ctx, phase, 75, 0, canvasHeight, platformHeight);
+            });
+
+            // Continue animation loop
+            requestAnimationFrame(animate);
+        }
+
+        // Start animation
+        animate();
+    </script>
+</body>
+
+</html>
