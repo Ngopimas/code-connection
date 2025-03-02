@@ -118,6 +118,17 @@
 
         // Animation function
         function animate() {
+            // Explicitly set documentation mode on first animation frame
+            if (!window.documentationModeSet) {
+                CharacterReference.setDocumentationMode(true);
+                window.documentationModeSet = true;
+
+                // Force an initial blink after a short delay
+                setTimeout(() => {
+                    CharacterReference.triggerBlink();
+                }, 500);
+            }
+
             canvasContexts.forEach(({ ctx, phase }) => {
                 // Clear canvas
                 ctx.clearRect(0, 0, 150, 150);
@@ -126,13 +137,19 @@
                 ctx.fillStyle = "#2D3748";
                 ctx.fillRect(0, canvasHeight - platformHeight, 150, platformHeight);
 
-                // Don't explicitly call updateBlinkState here - let drawCharacter handle it
-                // Instead, just force a blink every 5 seconds for the waiting phase
+                // For waiting phase, periodically force a blink for better visibility
                 if (phase === "waiting") {
+                    const currentTime = Date.now();
                     const blinkInfo = CharacterReference.getBlinkState();
-                    if (blinkInfo.blinkState === "open" && Date.now() - blinkInfo.lastBlinkTime > 5000) {
+
+                    // Force a blink every 4 seconds if in open state
+                    if (blinkInfo.blinkState === "open" &&
+                        currentTime - blinkInfo.lastBlinkTime > 4000) {
                         CharacterReference.triggerBlink();
                     }
+
+                    // Always update blink state for waiting animation
+                    CharacterReference.updateBlinkState();
                 }
 
                 // Draw character

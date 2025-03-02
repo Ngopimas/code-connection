@@ -495,11 +495,19 @@
 
         // Main animation function
         function animate() {
-            // Adjust animation timing based on speed
-            const originalDateNow = Date.now;
-            Date.now = function () {
-                return originalDateNow() * speed;
-            };
+            // Instead of overriding Date.now, store the original for consistent timing
+            const currentTime = Date.now();
+
+            // Explicitly set documentation mode on first animation frame
+            if (!window.documentationModeSet) {
+                CharacterReference.setDocumentationMode(true);
+                window.documentationModeSet = true;
+
+                // Force an initial blink after a short delay
+                setTimeout(() => {
+                    CharacterReference.triggerBlink();
+                }, 500);
+            }
 
             // Clear main canvas
             mainCtx.fillStyle = bgColor;
@@ -538,6 +546,20 @@
             // Scale up the drawing for higher resolution
             offscreenCtx.save();
             offscreenCtx.scale(resolutionMultiplier, resolutionMultiplier);
+
+            // Force blinking update for waiting phase
+            if (currentPhase === "waiting") {
+                // Ensure the blinking is updated regardless of speed setting
+                CharacterReference.updateBlinkState();
+
+                // Every few seconds, ensure we have at least one blink
+                // This helps with visibility
+                if (Date.now() - lastForcedBlink > 5000) {
+                    CharacterReference.triggerBlink();
+                    lastForcedBlink = Date.now();
+                }
+            }
+
             CharacterReference.drawCharacter(
                 offscreenCtx,
                 currentPhase,
@@ -579,16 +601,27 @@
                 ctx.fillStyle = "#2D3748";
                 ctx.fillRect(0, 120 - miniPlatformHeight, 120, miniPlatformHeight);
 
+                // For waiting phase mini canvases, ensure blink state is updated
+                if (phase === "waiting") {
+                    // No need to update blinking state for each canvas - the main update above is enough
+                    // Just draw the character with current state
+                }
+
                 // Draw character
                 CharacterReference.drawCharacter(ctx, phase, 60, 0, 120, miniPlatformHeight);
             });
 
-            // Restore original Date.now
-            Date.now = originalDateNow;
-
-            // Continue animation loop
-            requestAnimationFrame(animate);
+            // Continue animation loop at proper speed
+            // Speed affects the frequency of animation frames, not the timestamps
+            if (speed === 1.0) {
+                requestAnimationFrame(animate);
+            } else {
+                setTimeout(() => requestAnimationFrame(animate), 1000 / 60 * (1 / speed - 1));
+            }
         }
+
+        // Track when we last forced a blink
+        let lastForcedBlink = Date.now();
 
         // Start animation
         animate();

@@ -27,6 +27,7 @@ let maxConsecutiveBlinks = 3; // Maximum number of consecutive blinks
 let nextBlinkTimeout = null; // Store the timeout ID
 let forceBlinkCheck = true; // Force a blink check on next frame
 let globalBlinkInterval = null; // Store the global interval ID
+let isDocumentationContext = false; // Flag to identify documentation context
 
 // Set up a global interval to trigger blinks (helps with showcase pages)
 function setupGlobalBlinkInterval() {
@@ -34,6 +35,20 @@ function setupGlobalBlinkInterval() {
   if (globalBlinkInterval) {
     clearInterval(globalBlinkInterval);
   }
+
+  // Check if we're in a documentation context by examining the page URL
+  isDocumentationContext =
+    window.location.pathname.includes("showcase") ||
+    !window.location.pathname.includes("index.html");
+
+  // Set different timing for documentation pages
+  if (isDocumentationContext) {
+    timeBetweenBlinks = 3000; // More frequent blinks in documentation (3 seconds)
+    blinkDuration = 600; // Slower blinks for more visibility
+  }
+
+  // Set up a more frequent interval for documentation pages
+  const checkInterval = isDocumentationContext ? 200 : 500;
 
   // Set up a new interval
   globalBlinkInterval = setInterval(() => {
@@ -58,7 +73,7 @@ function setupGlobalBlinkInterval() {
         forceBlinkCheck = true;
       }, timeBetweenBlinks);
     }
-  }, 500); // Check more frequently (every 500ms)
+  }, checkInterval); // Check more frequently in documentation pages
 
   // For debugging
   console.log("Global blink interval set up");
@@ -66,8 +81,24 @@ function setupGlobalBlinkInterval() {
   return globalBlinkInterval;
 }
 
-// Initialize the global blink interval
-globalBlinkInterval = setupGlobalBlinkInterval();
+// Initialize the global blink interval on script load
+window.addEventListener("DOMContentLoaded", () => {
+  if (!globalBlinkInterval) {
+    globalBlinkInterval = setupGlobalBlinkInterval();
+
+    // Force an initial blink after a short delay to show the animation is working
+    setTimeout(() => {
+      triggerBlink();
+    }, 1000);
+  }
+});
+
+// Add a more frequent blink timer update
+setInterval(() => {
+  if (blinkState !== "open") {
+    updateBlinkState();
+  }
+}, 16); // Update every ~16ms for smooth animation
 
 // Make sure the interval is maintained even if the tab loses focus
 window.addEventListener("focus", () => {
@@ -185,17 +216,28 @@ function updateBlinkState() {
     const timeStep = 16; // 16ms is approximately 60fps
     blinkTimer += timeStep;
 
-    if (blinkState === "closing" && blinkTimer >= blinkDuration / 4) {
+    // Use adjusted timings for documentation context
+    const closingThreshold = isDocumentationContext
+      ? blinkDuration / 3
+      : blinkDuration / 4;
+    const closedDuration = isDocumentationContext
+      ? blinkDuration / 4
+      : blinkDuration / 6;
+    const openingThreshold = isDocumentationContext
+      ? blinkDuration / 3
+      : blinkDuration / 4;
+
+    if (blinkState === "closing" && blinkTimer >= closingThreshold) {
       // Eyes closed
       blinkState = "closed";
       blinkTimer = 0;
       console.log("Eyes now closed");
-    } else if (blinkState === "closed" && blinkTimer >= blinkDuration / 6) {
+    } else if (blinkState === "closed" && blinkTimer >= closedDuration) {
       // Start opening eyes
       blinkState = "opening";
       blinkTimer = 0;
       console.log("Eyes now opening");
-    } else if (blinkState === "opening" && blinkTimer >= blinkDuration / 4) {
+    } else if (blinkState === "opening" && blinkTimer >= openingThreshold) {
       // Eyes fully open
       blinkState = "open";
       blinkTimer = 0;
@@ -205,22 +247,26 @@ function updateBlinkState() {
       // Check if we should do another blink in the sequence
       if (consecutiveBlinkCount < maxConsecutiveBlinks && !nextBlinkTimeout) {
         // Determine if we should do another blink based on probability
-        const blinkProbability =
-          consecutiveBlinkCount === 1
-            ? 0.7 // 70% chance for second blink
-            : consecutiveBlinkCount === 2
-            ? 0.4 // 40% chance for third blink
-            : 0; // No chance for more than 3 blinks
+        // Higher probability in documentation context
+        const blinkProbability = isDocumentationContext
+          ? 0.8 // 80% chance in documentation
+          : consecutiveBlinkCount === 1
+          ? 0.7
+          : consecutiveBlinkCount === 2
+          ? 0.4
+          : 0;
 
         if (Math.random() < blinkProbability) {
           // Schedule the next blink after a short delay
+          // Longer delay in documentation context for more visibility
+          const delay = isDocumentationContext ? 250 : 150;
           nextBlinkTimeout = setTimeout(() => {
             blinkState = "closing";
             blinkTimer = 0;
             consecutiveBlinkCount++;
             nextBlinkTimeout = null;
             console.log("Starting consecutive blink #" + consecutiveBlinkCount);
-          }, 150);
+          }, delay);
         } else {
           // End the sequence
           consecutiveBlinkCount = 0;
@@ -298,20 +344,29 @@ function drawEyes(ctx, phase) {
     // Calculate eye height based on blink state
     if (blinkState === "closing") {
       // Gradually close eyes - exaggerated cartoon effect
-      const progress = blinkTimer / (blinkDuration / 4);
+      const progress =
+        blinkTimer /
+        (isDocumentationContext ? blinkDuration / 3 : blinkDuration / 4);
       eyeHeight = 3 * (1 - progress);
+      // More pronounced effect in documentation
+      const widthMultiplier = isDocumentationContext ? 0.7 : 0.5;
       // Slightly widen eyes as they close for cartoon effect
-      eyeWidth = 3 + progress * 0.5;
+      eyeWidth = 3 + progress * widthMultiplier;
     } else if (blinkState === "closed") {
       // Eyes almost closed for cartoon effect
-      eyeHeight = 0.3;
-      eyeWidth = 3.5; // Slightly wider when closed
+      eyeHeight = isDocumentationContext ? 0.2 : 0.3; // More closed in documentation
+      eyeWidth = isDocumentationContext ? 3.7 : 3.5; // Wider when closed in documentation
     } else if (blinkState === "opening") {
       // Gradually open eyes - exaggerated cartoon effect
-      const progress = blinkTimer / (blinkDuration / 4);
-      eyeHeight = 0.3 + (3 - 0.3) * progress;
+      const progress =
+        blinkTimer /
+        (isDocumentationContext ? blinkDuration / 3 : blinkDuration / 4);
+      const minHeight = isDocumentationContext ? 0.2 : 0.3;
+      eyeHeight = minHeight + (3 - minHeight) * progress;
       // Return to normal width
-      eyeWidth = 3.5 - progress * 0.5;
+      const maxWidth = isDocumentationContext ? 3.7 : 3.5;
+      const widthMultiplier = isDocumentationContext ? 0.7 : 0.5;
+      eyeWidth = maxWidth - progress * widthMultiplier;
     }
   }
 
@@ -550,6 +605,15 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
   ctx.fill();
 }
 
+// Helper function to trigger a blink manually
+function triggerBlink() {
+  blinkState = "closing";
+  blinkTimer = 0;
+  consecutiveBlinkCount = 1;
+  lastBlinkTime = Date.now();
+  console.log("Manually triggered blink");
+}
+
 // Export the module for use in both browser and Node.js environments
 (function (root, factory) {
   if (typeof define === "function" && define.amd) {
@@ -587,12 +651,21 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
       };
     },
     // Allow manual triggering of blinks for testing
-    triggerBlink: function () {
-      blinkState = "closing";
-      blinkTimer = 0;
-      consecutiveBlinkCount = 1;
-      lastBlinkTime = Date.now();
-      console.log("Manually triggered blink");
+    triggerBlink: triggerBlink,
+    // Add a way to explicitly set documentation mode
+    setDocumentationMode: function (isDoc) {
+      isDocumentationContext = !!isDoc;
+      // Adjust timing parameters
+      if (isDocumentationContext) {
+        timeBetweenBlinks = 3000;
+        blinkDuration = 600;
+      } else {
+        timeBetweenBlinks = 4000;
+        blinkDuration = 400;
+      }
+    },
+    isDocumentationContext: function () {
+      return isDocumentationContext;
     },
   };
 });

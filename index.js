@@ -1,12 +1,10 @@
-/**
- * From Hunor Marton Borbely:
- * https://codepen.io/HunorMarton/pen/xxOMQKg
- * If you want to know how this game was originally made, check out his video:
- * https://youtu.be/eue3UdFvwPo
- */
-
 // Toggle a debug button and info on screen
 const DEBUG_MODE = false;
+
+// Track triple tap for debug mode easter egg
+let tapCount = 0;
+let lastTapTime = 0;
+let tapTimeout = null;
 
 // Extend the base functionality of JavaScript
 Array.prototype.last = function () {
@@ -53,7 +51,7 @@ let score = 0;
 
 // Game bonuses tracking
 let consecutivePerfect = 0;
-let debugMode = false; // Initially false, can only be toggled if DEBUG_MODE is true
+let debugMode = false; // Can be toggled via triple-tap easter egg
 
 // Configuration
 const canvasWidth = 375;
@@ -91,7 +89,11 @@ canvas.height = window.innerHeight;
 // Prevent all default touch behaviors on the canvas
 canvas.addEventListener("touchstart", function (e) {
   e.preventDefault();
+
+  // Only start the game if not in the easter egg area
+  play();
 });
+
 canvas.addEventListener("touchmove", function (e) {
   e.preventDefault();
 });
@@ -114,7 +116,131 @@ const scoreElement = document.getElementById("score");
 // Initialize layout
 resetGame();
 
-// Debug mode button creation
+// Add a subtle hint for the debug mode easter egg
+function addDebugModeHint() {
+  const hint = document.createElement("div");
+  hint.id = "debug-hint";
+  hint.style.position = "absolute";
+  hint.style.top = "5px";
+  hint.style.right = "5px";
+  hint.style.width = "20px"; // Smaller size
+  hint.style.height = "20px"; // Smaller size
+  hint.style.borderRadius = "50%";
+  hint.style.backgroundColor = "rgba(255, 255, 255, 0.05)"; // Much more transparent
+  hint.style.border = "1px solid rgba(255, 255, 255, 0.1)"; // More subtle border
+  hint.style.cursor = "default"; // Default cursor to not draw attention
+  hint.style.zIndex = "999";
+  hint.style.transition = "all 0.3s ease";
+
+  // Remove the pulsing animation and question mark
+  hint.innerHTML = "";
+
+  document.body.appendChild(hint);
+
+  // Track clicks/taps on the hint element itself
+  let hintTapCount = 0;
+  let hintLastTapTime = 0;
+  let hintTapTimeout = null;
+
+  // Function to handle tap/click on the hint
+  const handleHintTap = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    const currentTime = new Date().getTime();
+
+    // Reset tap count if it's been too long since the last tap
+    if (currentTime - hintLastTapTime > 500) {
+      hintTapCount = 0;
+    }
+
+    // Clear any existing timeout
+    if (hintTapTimeout) {
+      clearTimeout(hintTapTimeout);
+    }
+
+    hintTapCount++;
+    hintLastTapTime = currentTime;
+
+    // Subtle visual feedback for each tap - just a slight opacity change
+    hint.style.backgroundColor = "rgba(255, 255, 255, 0.15)";
+    setTimeout(() => {
+      hint.style.backgroundColor = "rgba(255, 255, 255, 0.05)";
+    }, 100);
+
+    // Set a timeout to reset the tap count if the next tap doesn't come soon
+    hintTapTimeout = setTimeout(() => {
+      hintTapCount = 0;
+    }, 500);
+
+    // If we've reached 3 taps, toggle debug mode
+    if (hintTapCount >= 3) {
+      toggleDebugMode();
+      hintTapCount = 0; // Reset tap count after activation
+      showDebugModeNotification();
+    }
+  };
+
+  // Make the hint slightly more visible when hovered, but still subtle
+  hint.addEventListener("mouseover", function (e) {
+    e.stopPropagation(); // Prevent event from bubbling up
+    hint.style.backgroundColor = "rgba(255, 255, 255, 0.1)";
+  });
+
+  hint.addEventListener("mouseout", function (e) {
+    e.stopPropagation(); // Prevent event from bubbling up
+    hint.style.backgroundColor = "rgba(255, 255, 255, 0.05)";
+  });
+
+  // Add click/tap handlers directly to the hint element
+  hint.addEventListener("mousedown", handleHintTap);
+  hint.addEventListener("touchstart", handleHintTap);
+  hint.addEventListener("touchend", function (e) {
+    e.stopPropagation();
+    e.preventDefault();
+  });
+}
+
+// Call the function to add the hint
+addDebugModeHint();
+
+// Function to toggle debug mode
+function toggleDebugMode() {
+  debugMode = !debugMode;
+
+  if (debugMode) {
+    // Show debug info on screen
+    const debugInfo = document.createElement("div");
+    debugInfo.id = "debug-info";
+    debugInfo.style.position = "absolute";
+    debugInfo.style.bottom = "10px";
+    debugInfo.style.right = "10px";
+    debugInfo.style.backgroundColor = "rgba(26, 32, 44, 0.8)";
+    debugInfo.style.padding = "10px";
+    debugInfo.style.borderRadius = "4px";
+    debugInfo.style.fontFamily =
+      '"JetBrains Mono", "Fira Code", Consolas, monospace';
+    debugInfo.style.fontSize = "12px";
+    debugInfo.style.color = "#E2E8F0";
+    debugInfo.style.maxWidth = "200px";
+    debugInfo.style.zIndex = "1000";
+    debugInfo.style.borderLeft = "3px solid #68D391";
+    document.querySelector(".container").appendChild(debugInfo);
+
+    updateDebugInfo();
+  } else {
+    // Remove debug info
+    const debugInfo = document.getElementById("debug-info");
+    if (debugInfo) {
+      debugInfo.remove();
+    }
+  }
+
+  // Show notification for any toggle of debug mode
+  showDebugModeNotification();
+}
+
+// Debug mode button creation (still available if DEBUG_MODE is true)
 if (DEBUG_MODE) {
   const debugButton = document.createElement("button");
   debugButton.id = "debug-mode";
@@ -150,40 +276,14 @@ if (DEBUG_MODE) {
     e.stopPropagation();
     e.preventDefault();
     // Manually toggle debug mode on touchend
-    debugMode = !debugMode;
+    toggleDebugMode();
 
     if (debugMode) {
       debugButton.textContent = "Disable Debug Mode";
       debugButton.style.backgroundColor = "#68D391"; // Green when active
-
-      // Show debug info on screen
-      const debugInfo = document.createElement("div");
-      debugInfo.id = "debug-info";
-      debugInfo.style.position = "absolute";
-      debugInfo.style.bottom = "10px";
-      debugInfo.style.right = "10px";
-      debugInfo.style.backgroundColor = "rgba(26, 32, 44, 0.8)";
-      debugInfo.style.padding = "10px";
-      debugInfo.style.borderRadius = "4px";
-      debugInfo.style.fontFamily =
-        '"JetBrains Mono", "Fira Code", Consolas, monospace';
-      debugInfo.style.fontSize = "12px";
-      debugInfo.style.color = "#E2E8F0";
-      debugInfo.style.maxWidth = "200px";
-      debugInfo.style.zIndex = "1000";
-      debugInfo.style.borderLeft = "3px solid #68D391";
-      document.querySelector(".container").appendChild(debugInfo);
-
-      updateDebugInfo();
     } else {
       debugButton.textContent = "Enable Debug Mode";
       debugButton.style.backgroundColor = "#4A5568"; // Grey when inactive
-
-      // Remove debug info
-      const debugInfo = document.getElementById("debug-info");
-      if (debugInfo) {
-        debugInfo.remove();
-      }
     }
   });
 
@@ -191,49 +291,29 @@ if (DEBUG_MODE) {
   debugButton.addEventListener("click", function (e) {
     e.stopPropagation();
     e.preventDefault();
-    debugMode = !debugMode;
+    toggleDebugMode();
 
     if (debugMode) {
       debugButton.textContent = "Disable Debug Mode";
       debugButton.style.backgroundColor = "#68D391"; // Green when active
-
-      // Show debug info on screen
-      const debugInfo = document.createElement("div");
-      debugInfo.id = "debug-info";
-      debugInfo.style.position = "absolute";
-      debugInfo.style.bottom = "10px";
-      debugInfo.style.right = "10px";
-      debugInfo.style.backgroundColor = "rgba(26, 32, 44, 0.8)";
-      debugInfo.style.padding = "10px";
-      debugInfo.style.borderRadius = "4px";
-      debugInfo.style.fontFamily =
-        '"JetBrains Mono", "Fira Code", Consolas, monospace';
-      debugInfo.style.fontSize = "12px";
-      debugInfo.style.color = "#E2E8F0";
-      debugInfo.style.maxWidth = "200px";
-      debugInfo.style.zIndex = "1000";
-      debugInfo.style.borderLeft = "3px solid #68D391";
-      document.querySelector(".container").appendChild(debugInfo);
-
-      updateDebugInfo();
     } else {
       debugButton.textContent = "Enable Debug Mode";
       debugButton.style.backgroundColor = "#4A5568"; // Grey when inactive
-
-      // Remove debug info
-      const debugInfo = document.getElementById("debug-info");
-      if (debugInfo) {
-        debugInfo.remove();
-      }
     }
   });
 }
 
 // Function to update debug info
 function updateDebugInfo() {
-  if (DEBUG_MODE && debugMode) {
+  if (debugMode) {
     const debugInfo = document.getElementById("debug-info");
     if (debugInfo) {
+      // Find the current platform (where the stick is positioned)
+      const currentPlatform = platforms.find(
+        (platform) => platform.x + platform.w === sticks.last().x
+      );
+
+      // Find the next platform (the one we're trying to reach)
       const nextPlatform = platforms.find(
         (platform) => platform.x > sticks.last().x
       );
@@ -242,15 +322,47 @@ function updateDebugInfo() {
         ? (nextPlatform.x - sticks.last().x).toFixed(1)
         : "N/A";
 
-      const perfectHitDistance = nextPlatform
-        ? (nextPlatform.x + nextPlatform.w / 2).toFixed(1)
-        : "N/A";
+      // Calculate the perfect hit area range based on the current perfectAreaSize
+      // In debug mode, the perfect area is twice as large
+      const perfectSize = debugMode ? perfectAreaSize * 2 : perfectAreaSize;
+
+      let perfectHitInfo = "N/A";
+      if (nextPlatform) {
+        const perfectCenter = nextPlatform.x + nextPlatform.w / 2;
+        const perfectStart = (perfectCenter - perfectSize / 2).toFixed(1);
+        const perfectEnd = (perfectCenter + perfectSize / 2).toFixed(1);
+
+        // Calculate the required stick length to hit the perfect center
+        const requiredLength = (perfectCenter - sticks.last().x).toFixed(1);
+
+        perfectHitInfo = `${perfectStart} to ${perfectEnd} (center: ${perfectCenter.toFixed(
+          1
+        )})`;
+      }
+
+      // Add performance monitoring
+      const platformCount = platforms.length;
+      const stickCount = sticks.length;
+      const serverCount = servers.length;
+      const gemCount = missedGems.length + collectedGems.length;
+      const totalObjects = platformCount + stickCount + serverCount + gemCount;
 
       debugInfo.innerHTML = `
         <div>Game Phase: ${phase}</div>
         <div>Stick Length: ${sticks.last().length.toFixed(1)}</div>
-        <div>Distance to Next: ${distanceToNext}</div>
-        <div>Perfect Hit at: ${perfectHitDistance}</div>
+        <div>Next Platform: ${distanceToNext}</div>
+        <div>Perfect Center: ${
+          nextPlatform
+            ? (nextPlatform.x + nextPlatform.w / 2 - sticks.last().x).toFixed(1)
+            : "N/A"
+        }</div>
+        <div style="margin-top: 10px; border-top: 1px solid #4A5568; padding-top: 5px;">
+          <div>Platforms: ${platformCount}</div>
+          <div>Sticks: ${stickCount}</div>
+          <div>Servers: ${serverCount}</div>
+          <div>Gems: ${gemCount}</div>
+          <div>Total Objects: ${totalObjects}</div>
+        </div>
       `;
 
       requestAnimationFrame(updateDebugInfo);
@@ -276,7 +388,7 @@ function resetGame() {
   // The first platform is always the same
   // x + w has to match paddingX
   platforms = [{ x: 50, w: 50 }];
-  Array.from({ length: 6 }, () => generatePlatform());
+  Array.from({ length: 12 }, () => generatePlatform());
 
   sticks = [{ x: platforms[0].x + platforms[0].w, length: 0, rotation: 0 }];
 
@@ -462,8 +574,8 @@ function generateServer() {
 
 // Modified generatePlatform function to respect debug mode
 function generatePlatform() {
-  const minimumGap = DEBUG_MODE && debugMode ? 30 : 40; // Smaller gap in debug mode
-  const maximumGap = DEBUG_MODE && debugMode ? 100 : 200; // Smaller maximum gap in debug mode
+  const minimumGap = debugMode ? 30 : 40; // Smaller gap in debug mode
+  const maximumGap = debugMode ? 100 : 200; // Smaller maximum gap in debug mode
   const minimumWidth = 20;
   const maximumWidth = 100;
 
@@ -513,6 +625,7 @@ document.addEventListener("keyup", function (event) {
 
 document.addEventListener("mousedown", function (event) {
   event.preventDefault();
+
   // Only trigger play on left mouse button (button 0)
   if (event.button === 0) {
     play();
@@ -525,7 +638,6 @@ document.addEventListener("mouseup", function (event) {
 
 document.addEventListener("touchstart", function (event) {
   event.preventDefault();
-  play();
 });
 
 document.addEventListener("touchend", function (event) {
@@ -615,7 +727,7 @@ function animate(timestamp) {
               scale: 1,
               rotation: bonusGemRotation,
               timeLeft: 1000, // Animation duration in ms
-              isDebugMode: DEBUG_MODE && debugMode,
+              isDebugMode: debugMode,
             });
 
             consecutivePerfect++;
@@ -688,7 +800,7 @@ function animate(timestamp) {
             opacity: 0.7, // Start with lower opacity
             scale: 1,
             timeLeft: 800, // Shorter animation for misses
-            isDebugMode: DEBUG_MODE && debugMode,
+            isDebugMode: debugMode,
           });
         }
 
@@ -711,10 +823,9 @@ function animate(timestamp) {
         platformHeight + 100 + (window.innerHeight - canvasHeight) / 2;
       if (heroY > maxHeroY) {
         restartButton.style.display = "grid";
-        restartButton.innerHTML =
-          DEBUG_MODE && debugMode
-            ? "DEBUG COMPLETE<br>RESTART"
-            : "DEBUG & RESTART";
+        restartButton.innerHTML = debugMode
+          ? "DEBUG COMPLETE<br>RESTART"
+          : "DEBUG & RESTART";
         return;
       }
       break;
@@ -1078,19 +1189,18 @@ function drawPlatforms() {
     // Draw perfect area only if hero did not yet reach the platform
     if (sticks.last().x < x) {
       // In debug mode, make the perfect area larger and more visible
-      const perfectSize =
-        DEBUG_MODE && debugMode ? perfectAreaSize * 2 : perfectAreaSize;
+      const perfectSize = debugMode ? perfectAreaSize * 2 : perfectAreaSize;
 
       // Draw the code gem bonus object
       drawCodeGem(
         x + w / 2,
         canvasHeight - platformHeight - perfectSize / 2,
         perfectSize,
-        DEBUG_MODE && debugMode
+        debugMode
       );
 
       // In debug mode, add a vertical guide line
-      if (DEBUG_MODE && debugMode) {
+      if (debugMode) {
         ctx.strokeStyle = "rgba(252, 129, 129, 0.5)"; // Semi-transparent red
         ctx.lineWidth = 1;
         ctx.setLineDash([5, 5]); // Dashed line
@@ -1419,4 +1529,62 @@ function checkAndAddMoreServers() {
   // Clean up servers that are far behind us to save memory
   const visibleAreaStart = -sceneOffset - 300;
   servers = servers.filter((server) => server.x > visibleAreaStart);
+
+  // Clean up platforms that are far behind us to save memory
+  // Keep at least the first 3 platforms to ensure game stability
+  if (platforms.length > 3) {
+    platforms = [
+      ...platforms.slice(0, 3),
+      ...platforms.slice(3).filter((platform) => platform.x > visibleAreaStart),
+    ];
+  }
+
+  // Clean up sticks that are far behind us to save memory
+  // Always keep the last stick (current one) and at least 3 sticks for stability
+  if (sticks.length > 3) {
+    const lastStickIndex = sticks.length - 1;
+    sticks = [
+      ...sticks.slice(0, 3),
+      ...sticks
+        .slice(3, lastStickIndex)
+        .filter((stick) => stick.x > visibleAreaStart),
+      sticks[lastStickIndex], // Always keep the current stick
+    ];
+  }
+}
+
+// Function to show debug mode notification
+function showDebugModeNotification() {
+  const notification = document.createElement("div");
+  notification.textContent = debugMode
+    ? "Debug Mode Activated"
+    : "Debug Mode Deactivated";
+  notification.style.position = "absolute";
+  notification.style.top = "50px";
+  notification.style.left = "50%";
+  notification.style.transform = "translateX(-50%)";
+  notification.style.backgroundColor = debugMode ? "#68D391" : "#FC8181";
+  notification.style.color = "#1A202C";
+  notification.style.padding = "10px 20px";
+  notification.style.borderRadius = "4px";
+  notification.style.fontFamily =
+    '"JetBrains Mono", "Fira Code", Consolas, monospace';
+  notification.style.zIndex = "1000";
+  notification.style.opacity = "0";
+  notification.style.transition = "opacity 0.3s ease";
+
+  document.body.appendChild(notification);
+
+  // Fade in
+  setTimeout(() => {
+    notification.style.opacity = "1";
+  }, 10);
+
+  // Remove after 2 seconds
+  setTimeout(() => {
+    notification.style.opacity = "0";
+    setTimeout(() => {
+      notification.remove();
+    }, 300);
+  }, 2000);
 }
