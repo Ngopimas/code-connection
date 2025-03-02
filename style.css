@@ -1,0 +1,163 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  user-select: none; /* supported by Chrome and Opera */
+  -webkit-user-select: none; /* Safari */
+  -khtml-user-select: none; /* Konqueror HTML */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+  touch-action: manipulation; /* Prevent double-tap zoom */
+  -webkit-touch-callout: none; /* Prevent iOS callout on long-press */
+  background-color: #1a202c; /* Dark background like code editor */
+  color: #e2e8f0; /* Light text color */
+}
+
+body {
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  cursor: pointer;
+}
+
+/* Apply touch-action to all interactive elements */
+canvas,
+.container,
+button,
+#restart {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+#game-title {
+  position: absolute;
+  bottom: 10px;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  font-size: 28px;
+  font-weight: bold;
+  color: #63b3ed; /* Light blue */
+  text-shadow: 0 0 10px rgba(99, 179, 237, 0.5);
+  letter-spacing: 1px;
+}
+
+#best-score {
+  position: absolute;
+  top: 10px;
+  left: 30px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #f6ad55; /* Orange */
+}
+
+#current-score {
+  position: absolute;
+  top: 40px;
+  left: 30px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #68d391; /* Green */
+}
+
+#introduction {
+  width: 240px;
+  height: 120px;
+  margin-bottom: 200px;
+  position: absolute;
+  font-weight: 600;
+  font-size: 20px;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  text-align: center;
+  transition: opacity 2s;
+  color: #81e6d9; /* Teal */
+  background-color: rgba(26, 32, 44, 0.8); /* Dark background with opacity */
+  padding: 10px;
+  border-radius: 5px;
+  border-left: 3px solid #81e6d9; /* Teal border like VS Code */
+}
+
+#restart {
+  width: 200px;
+  height: 60px;
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  color: #1a202c; /* Dark text */
+  background-color: #63b3ed; /* Light blue */
+  border: none;
+  font-weight: 700;
+  font-size: 18px;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  display: none;
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(99, 179, 237, 0.7);
+  transition: all 0.3s ease;
+}
+
+#restart:hover {
+  background-color: #4299e1; /* Slightly darker blue on hover */
+  transform: scale(1.05);
+}
+
+#perfect {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 2s;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  font-weight: bold;
+  color: #68d391; /* Green */
+  background-color: rgba(26, 32, 44, 0.8);
+  padding: 10px 20px;
+  border-radius: 5px;
+  border-left: 3px solid #68d391;
+  text-shadow: 0 0 10px rgba(104, 211, 145, 0.5);
+}
+
+.footer {
+  position: fixed;
+  bottom: 12px;
+  display: flex;
+  width: 100%;
+  justify-content: space-evenly;
+}
+
+.footer-icon {
+  width: 70px;
+  height: 70px;
+  transform: scale(0.8);
+  transition: transform 0.5s;
+  filter: invert(92%) sepia(66%) saturate(272%) hue-rotate(330deg)
+    brightness(111%) contrast(96%) drop-shadow(0 0 0.1rem slategrey);
+}
+
+.footer-icon:hover,
+.footer-icon:focus {
+  transform: scale(0.9);
+}
+
+.linkedin-icon:hover,
+.linkedin-icon:focus {
+  filter: invert(17%) sepia(69%) saturate(4828%) hue-rotate(187deg)
+    brightness(101%) contrast(102%);
+}
+
+.mail-icon:hover,
+.mail-icon:focus {
+  filter: invert(28%) sepia(13%) saturate(3846%) hue-rotate(214deg)
+    brightness(86%) contrast(92%);
+}
+
+.github-icon:hover,
+.github-icon:focus {
+  filter: invert(15%) sepia(81%) saturate(6563%) hue-rotate(32deg)
+    brightness(99%) contrast(104%);
+}
