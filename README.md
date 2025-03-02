@@ -2,6 +2,8 @@
 
 A developer-themed platform game where you connect code blocks by building bridges between platforms. This is a re-themed version of the classic "Stick Hero" game concept.
 
+![Code Connection Game](./code-connection.png)
+
 ## How to Play
 
 1. **Objective**: Help your developer character traverse platforms by creating connections (code bridges) between them. Score points by making successful connections and try to achieve the highest score!
