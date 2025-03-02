@@ -39,6 +39,9 @@ let sceneOffset; // Moves the whole game
 let platforms = [];
 let sticks = [];
 let servers = [];
+let bonusGemRotation = 0; // Track rotation angle for bonus gem animation
+let missedGems = []; // Track gems that were missed
+let collectedGems = []; // Track gems that were collected
 
 // Pre-generated background elements to prevent flickering
 let binaryPattern = [];
@@ -570,8 +573,17 @@ function animate(timestamp) {
     return;
   }
 
+  // Animate the bonus gem rotation
+  bonusGemRotation = (bonusGemRotation + 1) % 360;
+
   // Check if we need more servers and add them if necessary
   checkAndAddMoreServers();
+
+  // Update missed gems animations
+  updateMissedGems(timestamp - lastTimestamp);
+
+  // Update collected gems animations
+  updateCollectedGems(timestamp - lastTimestamp);
 
   switch (phase) {
     case gameStatus.waiting:
@@ -594,6 +606,18 @@ function animate(timestamp) {
 
           // Bonus for consecutive perfect hits
           if (perfectHit) {
+            // Add a collected gem animation
+            collectedGems.push({
+              x: nextPlatform.x + nextPlatform.w / 2,
+              y: canvasHeight - platformHeight - perfectAreaSize / 2,
+              size: perfectAreaSize,
+              opacity: 1,
+              scale: 1,
+              rotation: bonusGemRotation,
+              timeLeft: 1000, // Animation duration in ms
+              isDebugMode: DEBUG_MODE && debugMode,
+            });
+
             consecutivePerfect++;
             if (consecutivePerfect > 1) {
               pointsEarned *= 1 + consecutivePerfect * 0.5; // Bonus multiplier increases with consecutive hits
@@ -651,6 +675,23 @@ function animate(timestamp) {
 
       const [nextPlatform] = thePlatformTheStickHits();
       if (sceneOffset > nextPlatform.x + nextPlatform.w - paddingX) {
+        // Check if we missed the perfect hit on the current platform
+        const perfectHitX = nextPlatform.x + nextPlatform.w / 2;
+        const stickFarX = sticks.last().x + sticks.last().length;
+
+        // If the stick didn't hit the perfect area, add a missed gem
+        if (Math.abs(stickFarX - perfectHitX) > perfectAreaSize / 2) {
+          missedGems.push({
+            x: perfectHitX,
+            y: canvasHeight - platformHeight - perfectAreaSize / 2,
+            size: perfectAreaSize,
+            opacity: 0.7, // Start with lower opacity
+            scale: 1,
+            timeLeft: 800, // Shorter animation for misses
+            isDebugMode: DEBUG_MODE && debugMode,
+          });
+        }
+
         // Add the next step
         sticks.push({
           x: nextPlatform.x + nextPlatform.w,
@@ -685,6 +726,52 @@ function animate(timestamp) {
   draw();
   lastTimestamp = timestamp;
   window.requestAnimationFrame(animate);
+}
+
+// Function to update missed gems animations
+function updateMissedGems(deltaTime) {
+  for (let i = missedGems.length - 1; i >= 0; i--) {
+    const gem = missedGems[i];
+
+    // Update time left
+    gem.timeLeft -= deltaTime;
+
+    // Calculate animation progress (0 to 1)
+    const progress = 1 - gem.timeLeft / 800;
+
+    // Update gem properties based on animation progress - more subtle
+    gem.opacity = 0.7 - progress * 0.7; // Fade from 0.7 to 0
+    gem.scale = 1 - progress * 0.3; // Slightly shrink
+
+    // Remove gem if animation is complete
+    if (gem.timeLeft <= 0) {
+      missedGems.splice(i, 1);
+    }
+  }
+}
+
+// Function to update collected gems animations
+function updateCollectedGems(deltaTime) {
+  for (let i = collectedGems.length - 1; i >= 0; i--) {
+    const gem = collectedGems[i];
+
+    // Update time left
+    gem.timeLeft -= deltaTime;
+
+    // Calculate animation progress (0 to 1)
+    const progress = 1 - gem.timeLeft / 1000;
+
+    // Update gem properties based on animation progress - more dramatic
+    gem.opacity = 1 - progress;
+    gem.scale = 1 + progress * 0.8; // Grow larger
+    gem.rotation += deltaTime / 10; // Rotate faster
+    gem.y -= deltaTime * 0.05; // Float upward
+
+    // Remove gem if animation is complete
+    if (gem.timeLeft <= 0) {
+      collectedGems.splice(i, 1);
+    }
+  }
 }
 
 // Returns the platform the stick hit (if it didn't hit any stick then return undefined)
@@ -726,8 +813,150 @@ function draw() {
   drawPlatforms();
   drawHero();
   drawSticks();
+  drawMissedGems(); // Draw missed gems
+  drawCollectedGems(); // Draw collected gems
 
   // Restore transformation
+  ctx.restore();
+}
+
+// Function to draw missed gems
+function drawMissedGems() {
+  missedGems.forEach((gem) => {
+    drawMissedGem(gem);
+  });
+}
+
+// Function to draw a missed gem - very subtle animation
+function drawMissedGem(gem) {
+  ctx.save();
+  ctx.translate(gem.x, gem.y);
+
+  // Apply scale animation
+  ctx.scale(gem.scale, gem.scale);
+
+  // Set opacity
+  ctx.globalAlpha = gem.opacity;
+
+  // Draw the gem shape (hexagon)
+  const gemSize = gem.size * 1.5;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i;
+    const gemX = Math.cos(angle) * (gemSize / 2);
+    const gemY = Math.sin(angle) * (gemSize / 2);
+
+    if (i === 0) {
+      ctx.moveTo(gemX, gemY);
+    } else {
+      ctx.lineTo(gemX, gemY);
+    }
+  }
+  ctx.closePath();
+
+  // Create gradient fill with slightly desaturated colors
+  const gemGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, gemSize / 2);
+
+  if (gem.isDebugMode) {
+    // Desaturated red in debug mode
+    gemGradient.addColorStop(0, "#E2A8A8");
+    gemGradient.addColorStop(0.5, "#C76F6F");
+    gemGradient.addColorStop(1, "#9B2C2C");
+  } else {
+    // Desaturated teal
+    gemGradient.addColorStop(0, "#A0CEC4");
+    gemGradient.addColorStop(0.5, "#319795");
+    gemGradient.addColorStop(1, "#1D4044");
+  }
+
+  ctx.fillStyle = gemGradient;
+  ctx.fill();
+
+  // Add code symbol inside the gem
+  ctx.fillStyle = gem.isDebugMode ? "#FFFFFF" : "#E6FFFA";
+  ctx.font = `${gemSize * 0.4}px monospace`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("</>", 0, 0);
+
+  ctx.restore();
+}
+
+// Function to draw collected gems
+function drawCollectedGems() {
+  collectedGems.forEach((gem) => {
+    drawCollectedGem(gem);
+  });
+}
+
+// Function to draw a collected gem - more dramatic animation
+function drawCollectedGem(gem) {
+  ctx.save();
+  ctx.translate(gem.x, gem.y);
+
+  // Apply scale and rotation animations
+  ctx.scale(gem.scale, gem.scale);
+  ctx.rotate((Math.PI / 180) * gem.rotation);
+
+  // Set opacity
+  ctx.globalAlpha = gem.opacity;
+
+  // Create glow effect
+  ctx.shadowColor = gem.isDebugMode
+    ? "rgba(252, 129, 129, 0.8)"
+    : "rgba(56, 178, 172, 0.8)";
+  ctx.shadowBlur = 15;
+
+  // Draw the gem shape (hexagon)
+  const gemSize = gem.size * 1.5;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i;
+    const gemX = Math.cos(angle) * (gemSize / 2);
+    const gemY = Math.sin(angle) * (gemSize / 2);
+
+    if (i === 0) {
+      ctx.moveTo(gemX, gemY);
+    } else {
+      ctx.lineTo(gemX, gemY);
+    }
+  }
+  ctx.closePath();
+
+  // Create gradient fill with brighter colors
+  const gemGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, gemSize / 2);
+
+  if (gem.isDebugMode) {
+    // Bright red in debug mode
+    gemGradient.addColorStop(0, "#FED7D7");
+    gemGradient.addColorStop(0.5, "#FC8181");
+    gemGradient.addColorStop(1, "#E53E3E");
+  } else {
+    // Bright teal
+    gemGradient.addColorStop(0, "#D6FFFE");
+    gemGradient.addColorStop(0.5, "#4FD1C5");
+    gemGradient.addColorStop(1, "#285E61");
+  }
+
+  ctx.fillStyle = gemGradient;
+  ctx.fill();
+
+  // Add code symbol inside the gem
+  ctx.fillStyle = gem.isDebugMode ? "#FFFFFF" : "#E6FFFA";
+  ctx.font = `${gemSize * 0.4}px monospace`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("</>", 0, 0);
+
+  // Add shine effect
+  ctx.beginPath();
+  ctx.moveTo(-gemSize / 4, -gemSize / 4);
+  ctx.lineTo(-gemSize / 8, -gemSize / 8);
+  ctx.lineTo(-gemSize / 16, -gemSize / 4);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+  ctx.fill();
+
   ctx.restore();
 }
 
@@ -852,32 +1081,12 @@ function drawPlatforms() {
       const perfectSize =
         DEBUG_MODE && debugMode ? perfectAreaSize * 2 : perfectAreaSize;
 
-      // Create a glowing effect for the perfect area
-      const perfectGradient = ctx.createRadialGradient(
+      // Draw the code gem bonus object
+      drawCodeGem(
         x + w / 2,
-        canvasHeight - platformHeight + perfectSize / 2,
-        0,
-        x + w / 2,
-        canvasHeight - platformHeight + perfectSize / 2,
-        perfectSize
-      );
-
-      if (DEBUG_MODE && debugMode) {
-        perfectGradient.addColorStop(0, "#FC8181"); // Red in debug mode
-        perfectGradient.addColorStop(0.7, "#FC8181");
-        perfectGradient.addColorStop(1, "rgba(252, 129, 129, 0.5)");
-      } else {
-        perfectGradient.addColorStop(0, "#38B2AC"); // Teal in regular mode
-        perfectGradient.addColorStop(0.7, "#38B2AC");
-        perfectGradient.addColorStop(1, "rgba(56, 178, 172, 0.5)");
-      }
-
-      ctx.fillStyle = perfectGradient;
-      ctx.fillRect(
-        x + w / 2 - perfectSize / 2,
-        canvasHeight - platformHeight,
+        canvasHeight - platformHeight - perfectSize / 2,
         perfectSize,
-        perfectSize
+        DEBUG_MODE && debugMode
       );
 
       // In debug mode, add a vertical guide line
@@ -893,6 +1102,78 @@ function drawPlatforms() {
       }
     }
   });
+}
+
+// Function to draw the code gem bonus object
+function drawCodeGem(x, y, size, isDebugMode) {
+  const gemSize = size * 1.5; // Make the gem slightly larger than the perfect area
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Apply floating animation
+  const floatOffset = Math.sin(Date.now() / 300) * 3;
+  ctx.translate(0, floatOffset);
+
+  // Apply rotation animation
+  ctx.rotate((Math.PI / 180) * bonusGemRotation);
+
+  // Create glow effect
+  ctx.shadowColor = isDebugMode
+    ? "rgba(252, 129, 129, 0.8)"
+    : "rgba(56, 178, 172, 0.8)";
+  ctx.shadowBlur = 15;
+
+  // Draw the gem shape (hexagon)
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i;
+    const gemX = Math.cos(angle) * (gemSize / 2);
+    const gemY = Math.sin(angle) * (gemSize / 2);
+
+    if (i === 0) {
+      ctx.moveTo(gemX, gemY);
+    } else {
+      ctx.lineTo(gemX, gemY);
+    }
+  }
+  ctx.closePath();
+
+  // Create gradient fill
+  const gemGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, gemSize / 2);
+
+  if (isDebugMode) {
+    // Red gem in debug mode
+    gemGradient.addColorStop(0, "#FEB2B2");
+    gemGradient.addColorStop(0.5, "#FC8181");
+    gemGradient.addColorStop(1, "#C53030");
+  } else {
+    // Teal/blue gem in regular mode
+    gemGradient.addColorStop(0, "#B2F5EA");
+    gemGradient.addColorStop(0.5, "#38B2AC");
+    gemGradient.addColorStop(1, "#234E52");
+  }
+
+  ctx.fillStyle = gemGradient;
+  ctx.fill();
+
+  // Add code symbol inside the gem
+  ctx.fillStyle = isDebugMode ? "#FFFFFF" : "#E6FFFA";
+  ctx.font = `${gemSize * 0.4}px monospace`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("</>", 0, 0);
+
+  // Add shine effect
+  ctx.beginPath();
+  ctx.moveTo(-gemSize / 4, -gemSize / 4);
+  ctx.lineTo(-gemSize / 8, -gemSize / 8);
+  ctx.lineTo(-gemSize / 16, -gemSize / 4);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+  ctx.fill();
+
+  ctx.restore();
 }
 
 function drawHero() {
