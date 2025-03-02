@@ -126,6 +126,15 @@
                 ctx.fillStyle = "#2D3748";
                 ctx.fillRect(0, canvasHeight - platformHeight, 150, platformHeight);
 
+                // Don't explicitly call updateBlinkState here - let drawCharacter handle it
+                // Instead, just force a blink every 5 seconds for the waiting phase
+                if (phase === "waiting") {
+                    const blinkInfo = CharacterReference.getBlinkState();
+                    if (blinkInfo.blinkState === "open" && Date.now() - blinkInfo.lastBlinkTime > 5000) {
+                        CharacterReference.triggerBlink();
+                    }
+                }
+
                 // Draw character
                 CharacterReference.drawCharacter(ctx, phase, 75, 0, canvasHeight, platformHeight);
             });

@@ -6,7 +6,7 @@
  */
 
 // Toggle a debug button and info on screen
-const DEBUG_MODE = true;
+const DEBUG_MODE = false;
 
 // Extend the base functionality of JavaScript
 Array.prototype.last = function () {
@@ -38,7 +38,12 @@ let sceneOffset; // Moves the whole game
 
 let platforms = [];
 let sticks = [];
-let trees = [];
+let servers = [];
+
+// Pre-generated background elements to prevent flickering
+let binaryPattern = [];
+let hillNodes = [];
+let circuitLines = [];
 
 let record = +localStorage.getItem("record") || 0;
 let score = 0;
@@ -272,32 +277,184 @@ function resetGame() {
 
   sticks = [{ x: platforms[0].x + platforms[0].w, length: 0, rotation: 0 }];
 
-  trees = [];
-  Array.from({ length: 10 }, () => generateTree());
+  servers = [];
+  // Calculate number of servers based on screen width to fill more of the desktop
+  const screenWidthFactor = Math.ceil(window.innerWidth / canvasWidth);
+  // Reduce the number of servers - use a smaller multiplier and lower minimum
+  const numberOfServers = Math.max(10, screenWidthFactor * 8); // Reduced from 20 and 15
+
+  // Generate servers with a wider distribution
+  // First, calculate the total width we want to cover
+  const totalWidth = window.innerWidth * 1.5; // Cover 1.5x the screen width
+  const averageGap = totalWidth / numberOfServers;
+
+  // Generate servers with more consistent spacing
+  for (let i = 0; i < numberOfServers; i++) {
+    // Add more randomness to the spacing to make it less dense
+    const x = i * averageGap + Math.random() * averageGap * 0.7;
+
+    // Updated colors for servers/computers
+    const serverColors = ["#4A5568", "#2D3748", "#1A202C"];
+    const color = serverColors[Math.floor(Math.random() * serverColors.length)];
+
+    // Pre-generate indicator lights
+    const rackLines = 5;
+    const indicatorLights = [];
+
+    for (let j = 0; j < rackLines; j++) {
+      if (Math.random() > 0.5) {
+        const lightColor = Math.random() > 0.5 ? "#68D391" : "#F56565";
+        indicatorLights.push({ rack: j, color: lightColor });
+      }
+    }
+
+    servers.push({ x, color, indicatorLights });
+  }
 
   heroX = platforms[0].x + platforms[0].w - heroDistanceFromEdge;
   heroY = 0;
 
+  // Pre-generate background elements to prevent flickering
+  generateBackgroundElements();
+
   draw();
 }
 
-function generateTree() {
-  const minimumGap = 30;
-  const maximumGap = 150;
+// Generate stable background elements
+function generateBackgroundElements() {
+  // Pre-generate binary pattern
+  binaryPattern = [];
+  for (let x = 0; x < Math.ceil(window.innerWidth / 20) + 1; x++) {
+    binaryPattern[x] = [];
+    for (let y = 0; y < Math.ceil(window.innerHeight / 15) + 1; y++) {
+      binaryPattern[x][y] = Math.random() > 0.5 ? "1" : "0";
+    }
+  }
 
-  // X coordinate of the right edge of the furthest tree
-  const lastTree = trees[trees.length - 1];
-  let furthestX = lastTree ? lastTree.x : 0;
+  // Pre-generate hill nodes
+  hillNodes = [];
+  for (let i = 0; i < window.innerWidth; i += 80) {
+    if (Math.random() > 0.7) {
+      hillNodes.push(i);
+    }
+  }
+
+  // Pre-generate circuit lines
+  circuitLines = [];
+  const segments = 5;
+  const width = window.innerWidth / segments;
+
+  for (let i = 0; i < segments; i++) {
+    const x1 = i * width;
+    const x2 = (i + 1) * width;
+    const randomOffset1 = 10 + Math.random() * 20;
+    const randomOffset2 = 10 + Math.random() * 20;
+
+    circuitLines.push({
+      x1,
+      x2,
+      randomOffset1,
+      randomOffset2,
+    });
+  }
+}
+
+// Smoothly update background elements when window size changes
+function updateBackgroundElements() {
+  // Get current dimensions
+  const currentPatternWidth = binaryPattern.length;
+  const currentPatternHeight = binaryPattern[0] ? binaryPattern[0].length : 0;
+
+  // Calculate new dimensions
+  const newPatternWidth = Math.ceil(window.innerWidth / 20) + 1;
+  const newPatternHeight = Math.ceil(window.innerHeight / 15) + 1;
+
+  // Update binary pattern - preserve existing values and only add new ones
+  for (let x = 0; x < newPatternWidth; x++) {
+    if (!binaryPattern[x]) {
+      binaryPattern[x] = [];
+    }
+
+    for (let y = 0; y < newPatternHeight; y++) {
+      if (binaryPattern[x][y] === undefined) {
+        binaryPattern[x][y] = Math.random() > 0.5 ? "1" : "0";
+      }
+    }
+  }
+
+  // Only add new hill nodes if window width increased
+  if (window.innerWidth > hillNodes[hillNodes.length - 1] + 80) {
+    for (
+      let i = hillNodes[hillNodes.length - 1] + 80;
+      i < window.innerWidth;
+      i += 80
+    ) {
+      if (Math.random() > 0.7) {
+        hillNodes.push(i);
+      }
+    }
+  }
+
+  // Update circuit lines to match new window width
+  const segments = 5;
+  const width = window.innerWidth / segments;
+
+  // Preserve existing circuit lines but adjust their positions
+  for (let i = 0; i < segments; i++) {
+    if (circuitLines[i]) {
+      circuitLines[i].x1 = i * width;
+      circuitLines[i].x2 = (i + 1) * width;
+    } else {
+      const randomOffset1 = 10 + Math.random() * 20;
+      const randomOffset2 = 10 + Math.random() * 20;
+
+      circuitLines.push({
+        x1: i * width,
+        x2: (i + 1) * width,
+        randomOffset1,
+        randomOffset2,
+      });
+    }
+  }
+}
+
+function generateServer() {
+  const minimumGap = 50; // Increased from 30
+  const maximumGap = 200; // Increased from 150
+
+  // X coordinate of the right edge of the furthest server
+  const lastServer = servers[servers.length - 1];
+  let furthestX = lastServer ? lastServer.x : 0;
+
+  // Adjust gap based on number of servers to ensure better distribution
+  // If we have many servers, make the gap smaller to fit them better
+  const serverCount = servers.length;
+  const adjustedMinGap = serverCount > 20 ? 40 : minimumGap; // Increased from 20
+  const adjustedMaxGap = serverCount > 20 ? 150 : maximumGap; // Increased from 100
 
   const x =
     furthestX +
-    minimumGap +
-    Math.floor(Math.random() * (maximumGap - minimumGap));
+    adjustedMinGap +
+    Math.floor(Math.random() * (adjustedMaxGap - adjustedMinGap));
 
-  const treeColors = ["#6D8821", "#8FAC34", "#98B333"];
-  const color = treeColors[Math.floor(Math.random() * 3)];
+  // Updated colors for servers/computers
+  const serverColors = ["#4A5568", "#2D3748", "#1A202C"];
+  const color = serverColors[Math.floor(Math.random() * serverColors.length)];
 
-  trees.push({ x, color });
+  // Pre-generate indicator lights for this server
+  const rackLines = 5;
+  const indicatorLights = [];
+
+  for (let i = 0; i < rackLines; i++) {
+    // Determine if this rack has an indicator light
+    if (Math.random() > 0.5) {
+      // Determine if it's green or red
+      const lightColor = Math.random() > 0.5 ? "#68D391" : "#F56565";
+      indicatorLights.push({ rack: i, color: lightColor });
+    }
+  }
+
+  servers.push({ x, color, indicatorLights });
 }
 
 // Modified generatePlatform function to respect debug mode
@@ -327,14 +484,36 @@ resetGame();
 document.addEventListener("keydown", function (event) {
   if (event.key == " ") {
     event.preventDefault();
-    resetGame();
-    return;
+
+    // If the restart button is visible (hero has crashed), restart the game
+    if (restartButton.style.display === "grid") {
+      resetGame();
+      return;
+    }
+
+    // Otherwise, play the game (same behavior as left click)
+    if (phase == gameStatus.waiting) {
+      play();
+    } else if (phase == gameStatus.coding) {
+      // If already coding (stretching), release on space up
+      stop();
+    }
+  }
+});
+
+// Add space key up event to release the stick
+document.addEventListener("keyup", function (event) {
+  if (event.key == " " && phase == gameStatus.coding) {
+    stop();
   }
 });
 
 document.addEventListener("mousedown", function (event) {
   event.preventDefault();
-  play();
+  // Only trigger play on left mouse button (button 0)
+  if (event.button === 0) {
+    play();
+  }
 });
 
 document.addEventListener("mouseup", function (event) {
@@ -347,7 +526,7 @@ document.addEventListener("touchstart", function (event) {
 });
 
 document.addEventListener("touchend", function (event) {
-  event.preventDefault(); // Add preventDefault to touchend as well
+  event.preventDefault();
   stop();
 });
 
@@ -357,9 +536,12 @@ document.addEventListener("dblclick", function (event) {
   return false;
 });
 
+// Handle window resize
 window.addEventListener("resize", function (event) {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+  // Update background elements when window size changes
+  updateBackgroundElements();
   draw();
 });
 
@@ -388,9 +570,13 @@ function animate(timestamp) {
     return;
   }
 
+  // Check if we need more servers and add them if necessary
+  checkAndAddMoreServers();
+
   switch (phase) {
     case gameStatus.waiting:
-      return; // Stop the loop
+      draw();
+      break;
     case gameStatus.coding: {
       sticks.last().length += (timestamp - lastTimestamp) / codingSpeed;
       break;
@@ -431,8 +617,7 @@ function animate(timestamp) {
           }
 
           generatePlatform();
-          generateTree();
-          generateTree();
+          generateServer();
         }
 
         phase = gameStatus.running;
@@ -498,9 +683,8 @@ function animate(timestamp) {
   }
 
   draw();
-  window.requestAnimationFrame(animate);
-
   lastTimestamp = timestamp;
+  window.requestAnimationFrame(animate);
 }
 
 // Returns the platform the stick hit (if it didn't hit any stick then return undefined)
@@ -568,14 +752,29 @@ restartButton.addEventListener("touchend", function (event) {
 
 function drawPlatforms() {
   platforms.forEach(({ x, w }) => {
-    // Draw platform
-    ctx.fillStyle = "#2D3748"; // Dark blue-grey color like VS Code dark theme
+    // Create a gradient for the platform base
+    const platformGradient = ctx.createLinearGradient(
+      x,
+      canvasHeight - platformHeight,
+      x,
+      canvasHeight
+    );
+    platformGradient.addColorStop(0, "#1A365D"); // Dark blue at top
+    platformGradient.addColorStop(0.4, "#2B4F76"); // Medium blue
+    platformGradient.addColorStop(1, "#1E3A5F"); // Slightly darker blue at bottom
+
+    // Draw platform with gradient
+    ctx.fillStyle = platformGradient;
     ctx.fillRect(
       x,
       canvasHeight - platformHeight,
       w,
       platformHeight + (window.innerHeight - canvasHeight) / 2
     );
+
+    // Add a subtle top edge highlight
+    ctx.fillStyle = "rgba(99, 179, 237, 0.15)"; // Very subtle blue highlight
+    ctx.fillRect(x, canvasHeight - platformHeight, w, 1);
 
     // Add code-like decoration to platforms
     const blockHeight = 20;
@@ -585,9 +784,28 @@ function drawPlatforms() {
       const blockWidth = Math.min(25, w / numBlocks - 5);
       const blockX = x + i * (w / numBlocks) + 2.5;
 
-      // Code block background
-      ctx.fillStyle = "#1A202C"; // Darker shade for code block
+      // Code block background with subtle gradient
+      const codeBlockGradient = ctx.createLinearGradient(
+        blockX,
+        canvasHeight - platformHeight + 10,
+        blockX,
+        canvasHeight - platformHeight + 10 + blockHeight
+      );
+      codeBlockGradient.addColorStop(0, "#1A202C"); // Darker shade for code block
+      codeBlockGradient.addColorStop(1, "#0D1117"); // Even darker at bottom
+
+      ctx.fillStyle = codeBlockGradient;
       ctx.fillRect(
+        blockX,
+        canvasHeight - platformHeight + 10,
+        blockWidth,
+        blockHeight
+      );
+
+      // Add subtle border to code blocks
+      ctx.strokeStyle = "rgba(99, 179, 237, 0.3)"; // Light blue border
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(
         blockX,
         canvasHeight - platformHeight + 10,
         blockWidth,
@@ -634,7 +852,27 @@ function drawPlatforms() {
       const perfectSize =
         DEBUG_MODE && debugMode ? perfectAreaSize * 2 : perfectAreaSize;
 
-      ctx.fillStyle = DEBUG_MODE && debugMode ? "#FC8181" : "#38B2AC"; // Red in debug mode, teal in regular mode
+      // Create a glowing effect for the perfect area
+      const perfectGradient = ctx.createRadialGradient(
+        x + w / 2,
+        canvasHeight - platformHeight + perfectSize / 2,
+        0,
+        x + w / 2,
+        canvasHeight - platformHeight + perfectSize / 2,
+        perfectSize
+      );
+
+      if (DEBUG_MODE && debugMode) {
+        perfectGradient.addColorStop(0, "#FC8181"); // Red in debug mode
+        perfectGradient.addColorStop(0.7, "#FC8181");
+        perfectGradient.addColorStop(1, "rgba(252, 129, 129, 0.5)");
+      } else {
+        perfectGradient.addColorStop(0, "#38B2AC"); // Teal in regular mode
+        perfectGradient.addColorStop(0.7, "#38B2AC");
+        perfectGradient.addColorStop(1, "rgba(56, 178, 172, 0.5)");
+      }
+
+      ctx.fillStyle = perfectGradient;
       ctx.fillRect(
         x + w / 2 - perfectSize / 2,
         canvasHeight - platformHeight,
@@ -714,15 +952,19 @@ function drawBackground() {
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
-  // Add binary pattern to background
+  // Add binary pattern to background using pre-generated pattern
   ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
   ctx.font = "10px monospace";
 
-  // Binary pattern - create a grid of 0s and 1s
-  for (let x = 0; x < window.innerWidth; x += 20) {
-    for (let y = 0; y < window.innerHeight; y += 15) {
-      const digit = Math.random() > 0.5 ? "1" : "0";
-      ctx.fillText(digit, x, y);
+  // Use pre-generated binary pattern
+  const patternWidth = Math.ceil(window.innerWidth / 20);
+  const patternHeight = Math.ceil(window.innerHeight / 15);
+
+  for (let x = 0; x < patternWidth; x++) {
+    for (let y = 0; y < patternHeight; y++) {
+      if (binaryPattern[x] && binaryPattern[x][y]) {
+        ctx.fillText(binaryPattern[x][y], x * 20, y * 15);
+      }
     }
   }
 
@@ -730,8 +972,8 @@ function drawBackground() {
   drawHill(hill1BaseHeight, hill1Amplitude, hill1Stretch, "#2B6CB0"); // Medium blue
   drawHill(hill2BaseHeight, hill2Amplitude, hill2Stretch, "#2C5282"); // Darker blue
 
-  // Draw trees (replaced with server/computer towers)
-  trees.forEach((tree) => drawTree(tree.x, tree.color));
+  // Draw servers/computers towers
+  servers.forEach((server) => drawServer(server.x, server.color));
 }
 
 // A hill is a shape under a stretched out sinus wave
@@ -744,8 +986,8 @@ function drawHill(baseHeight, amplitude, stretch, color) {
   for (let i = 0; i < window.innerWidth; i++) {
     ctx.lineTo(i, getHillY(i, baseHeight, amplitude, stretch));
 
-    // Add random circuit nodes at intervals
-    if (i % 80 === 0 && Math.random() > 0.7) {
+    // Add pre-generated circuit nodes at intervals
+    if (hillNodes.includes(i)) {
       const y = getHillY(i, baseHeight, amplitude, stretch);
       ctx.lineTo(i, y - 5);
       ctx.lineTo(i + 10, y - 5);
@@ -757,52 +999,54 @@ function drawHill(baseHeight, amplitude, stretch, color) {
   ctx.fillStyle = color;
   ctx.fill();
 
-  // Add circuit lines
+  // Add circuit lines using pre-generated positions
   ctx.strokeStyle = "rgba(79, 209, 197, 0.3)"; // Light teal with transparency
   ctx.lineWidth = 1;
   ctx.beginPath();
 
-  const segments = 5;
-  const width = window.innerWidth / segments;
-
-  for (let i = 0; i < segments; i++) {
-    const x1 = i * width;
-    const x2 = (i + 1) * width;
+  circuitLines.forEach((line) => {
+    const x1 = line.x1;
+    const x2 = line.x2;
     const y1 =
-      getHillY(x1, baseHeight, amplitude, stretch) + 10 + Math.random() * 20;
+      getHillY(x1, baseHeight, amplitude, stretch) + line.randomOffset1;
     const y2 =
-      getHillY(x2, baseHeight, amplitude, stretch) + 10 + Math.random() * 20;
+      getHillY(x2, baseHeight, amplitude, stretch) + line.randomOffset2;
 
     // Horizontal line
     ctx.moveTo(x1, y1);
-    ctx.lineTo(x1 + width * 0.4, y1);
+    ctx.lineTo(x1 + (x2 - x1) * 0.4, y1);
 
     // Vertical connector
-    ctx.moveTo(x1 + width * 0.4, y1);
-    ctx.lineTo(x1 + width * 0.4, y2);
+    ctx.moveTo(x1 + (x2 - x1) * 0.4, y1);
+    ctx.lineTo(x1 + (x2 - x1) * 0.4, y2);
 
     // Horizontal again
-    ctx.moveTo(x1 + width * 0.4, y2);
+    ctx.moveTo(x1 + (x2 - x1) * 0.4, y2);
     ctx.lineTo(x2, y2);
-  }
+  });
 
   ctx.stroke();
 }
 
-function drawTree(x, color) {
+function drawServer(x, color) {
   ctx.save();
   ctx.translate(
     (-sceneOffset * backgroundSpeedMultiplier + x) * hill1Stretch,
-    getTreeY(x, hill1BaseHeight, hill1Amplitude)
+    getServerY(x, hill1BaseHeight, hill1Amplitude)
   );
 
-  // Draw server/computer tower instead of tree
-  const towerWidth = 12;
-  const towerHeight = 20;
+  // Draw server/computer tower
+  const towerWidth = 14;
+  const towerHeight = 24;
 
   // Tower body
-  ctx.fillStyle = "#4A5568"; // Dark grey for tower
+  ctx.fillStyle = color;
   ctx.fillRect(-towerWidth / 2, -towerHeight, towerWidth, towerHeight);
+
+  // Server case outline
+  ctx.strokeStyle = "#A0AEC0";
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(-towerWidth / 2, -towerHeight, towerWidth, towerHeight);
 
   // Server rack lines
   const rackLines = 5;
@@ -810,7 +1054,7 @@ function drawTree(x, color) {
 
   for (let i = 0; i < rackLines; i++) {
     // Server slot
-    ctx.fillStyle = "#2D3748"; // Darker shade for server slots
+    ctx.fillStyle = "#1A202C"; // Darker shade for server slots
     ctx.fillRect(
       -towerWidth / 2 + 1,
       -towerHeight + i * rackHeight + 1,
@@ -818,16 +1062,42 @@ function drawTree(x, color) {
       rackHeight - 2
     );
 
-    // Indicator lights
-    if (Math.random() > 0.5) {
-      ctx.fillStyle = Math.random() > 0.5 ? "#68D391" : "#F56565"; // Green or red lights
+    // Add rack mount points
+    ctx.fillStyle = "#718096";
+    ctx.fillRect(
+      -towerWidth / 2 + 2,
+      -towerHeight + i * rackHeight + rackHeight / 2 - 1,
+      2,
+      2
+    );
+    ctx.fillRect(
+      towerWidth / 2 - 4,
+      -towerHeight + i * rackHeight + rackHeight / 2 - 1,
+      2,
+      2
+    );
+  }
+
+  // Find the server object that matches this x coordinate
+  const server = servers.find(
+    (s) =>
+      Math.abs(
+        (-sceneOffset * backgroundSpeedMultiplier + s.x) * hill1Stretch -
+          (-sceneOffset * backgroundSpeedMultiplier + x) * hill1Stretch
+      ) < 0.1
+  );
+
+  // Draw pre-generated indicator lights
+  if (server && server.indicatorLights) {
+    server.indicatorLights.forEach((light) => {
+      ctx.fillStyle = light.color;
       ctx.fillRect(
-        towerWidth / 2 - 3,
-        -towerHeight + i * rackHeight + rackHeight / 2,
+        -towerWidth / 2 + towerWidth - 4,
+        -towerHeight + light.rack * rackHeight + rackHeight / 2 - 1,
         2,
         2
       );
-    }
+    });
   }
 
   ctx.restore();
@@ -842,7 +1112,30 @@ function getHillY(windowX, baseHeight, amplitude, stretch) {
   );
 }
 
-function getTreeY(x, baseHeight, amplitude) {
+function getServerY(x, baseHeight, amplitude) {
   const sineBaseY = window.innerHeight - baseHeight;
   return Math.sinus(x) * amplitude + sineBaseY;
+}
+
+// Function to check if we need more servers and add them if necessary
+function checkAndAddMoreServers() {
+  // Calculate the visible area based on current sceneOffset
+  const visibleAreaEnd = -sceneOffset + window.innerWidth / hill1Stretch;
+
+  // Find the furthest server
+  const lastServer = servers.length > 0 ? servers[servers.length - 1] : null;
+  const furthestServerX = lastServer ? lastServer.x : 0;
+
+  // If the furthest server is getting close to the visible area, add more servers
+  if (!lastServer || furthestServerX < visibleAreaEnd + 500) {
+    // Add fewer servers to ensure we have a reasonable amount ahead
+    const serversToAdd = 5; // Reduced from 10
+    for (let i = 0; i < serversToAdd; i++) {
+      generateServer();
+    }
+  }
+
+  // Clean up servers that are far behind us to save memory
+  const visibleAreaStart = -sceneOffset - 300;
+  servers = servers.filter((server) => server.x > visibleAreaStart);
 }

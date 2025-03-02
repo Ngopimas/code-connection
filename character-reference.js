@@ -16,6 +16,66 @@
 const heroWidth = 17;
 const heroHeight = 30;
 
+// Blinking animation variables
+let blinkTimer = 0;
+let blinkState = "open"; // 'open', 'closing', 'closed', 'opening'
+let blinkDuration = 400; // Duration of a complete blink in ms (reduced for more natural effect)
+let timeBetweenBlinks = 4000; // Time between blinks in ms (4 seconds)
+let lastBlinkTime = Date.now();
+let consecutiveBlinkCount = 0; // Track how many blinks have occurred in sequence
+let maxConsecutiveBlinks = 3; // Maximum number of consecutive blinks
+let nextBlinkTimeout = null; // Store the timeout ID
+let forceBlinkCheck = true; // Force a blink check on next frame
+let globalBlinkInterval = null; // Store the global interval ID
+
+// Set up a global interval to trigger blinks (helps with showcase pages)
+function setupGlobalBlinkInterval() {
+  // Clear any existing interval
+  if (globalBlinkInterval) {
+    clearInterval(globalBlinkInterval);
+  }
+
+  // Set up a new interval
+  globalBlinkInterval = setInterval(() => {
+    // Only trigger blinks when in open state and enough time has passed
+    if (
+      blinkState === "open" &&
+      !nextBlinkTimeout &&
+      Date.now() - lastBlinkTime > timeBetweenBlinks
+    ) {
+      // Start a new blink
+      blinkState = "closing";
+      blinkTimer = 0;
+      consecutiveBlinkCount = 1;
+      forceBlinkCheck = false;
+      lastBlinkTime = Date.now(); // Update last blink time
+
+      // For debugging
+      console.log("Global interval triggered blink");
+
+      // Reset force check after a delay
+      setTimeout(() => {
+        forceBlinkCheck = true;
+      }, timeBetweenBlinks);
+    }
+  }, 500); // Check more frequently (every 500ms)
+
+  // For debugging
+  console.log("Global blink interval set up");
+
+  return globalBlinkInterval;
+}
+
+// Initialize the global blink interval
+globalBlinkInterval = setupGlobalBlinkInterval();
+
+// Make sure the interval is maintained even if the tab loses focus
+window.addEventListener("focus", () => {
+  if (!globalBlinkInterval) {
+    globalBlinkInterval = setupGlobalBlinkInterval();
+  }
+});
+
 /**
  * Main character drawing function
  * @param {CanvasRenderingContext2D} ctx - The canvas context
@@ -33,9 +93,48 @@ function drawCharacter(ctx, phase, heroX, heroY, canvasHeight, platformHeight) {
     heroY + canvasHeight - platformHeight - heroHeight / 2
   );
 
+  // Update blink timer if in waiting phase
+  if (phase === "waiting") {
+    // Make sure the global blink interval is active
+    if (!globalBlinkInterval) {
+      globalBlinkInterval = setupGlobalBlinkInterval();
+    }
+
+    // Force a blink check periodically to ensure animation works in all contexts
+    if (forceBlinkCheck) {
+      const now = Date.now();
+      if (now - lastBlinkTime > timeBetweenBlinks) {
+        blinkState = "closing";
+        blinkTimer = 0;
+        consecutiveBlinkCount = 1;
+        lastBlinkTime = now;
+        forceBlinkCheck = false;
+
+        // For debugging
+        console.log("Force check triggered blink");
+
+        // Reset force check after a delay
+        setTimeout(() => {
+          forceBlinkCheck = true;
+        }, timeBetweenBlinks);
+      }
+    }
+
+    // Always update blink state when in waiting phase
+    updateBlinkState();
+  } else {
+    // Reset blink state when not in waiting phase
+    blinkState = "open";
+    consecutiveBlinkCount = 0;
+    if (nextBlinkTimeout) {
+      clearTimeout(nextBlinkTimeout);
+      nextBlinkTimeout = null;
+    }
+  }
+
   // Draw the base character (common to all states)
   // Don't draw legs in running state as we'll draw animated legs instead
-  drawCharacterBase(ctx, phase !== "running" && phase !== "migrating");
+  drawCharacterBase(ctx, phase !== "running" && phase !== "migrating", phase);
 
   // Draw state-specific elements
   switch (phase) {
@@ -61,11 +160,86 @@ function drawCharacter(ctx, phase, heroX, heroY, canvasHeight, platformHeight) {
 }
 
 /**
+ * Updates the blinking state based on time
+ */
+function updateBlinkState() {
+  const currentTime = Date.now();
+
+  // Check if it's time to start a new blink sequence
+  if (
+    blinkState === "open" &&
+    currentTime - lastBlinkTime > timeBetweenBlinks &&
+    !nextBlinkTimeout
+  ) {
+    // Start a new blink
+    blinkState = "closing";
+    blinkTimer = 0;
+    consecutiveBlinkCount = 1;
+    console.log("updateBlinkState triggered new blink");
+    return;
+  }
+
+  // Update ongoing blink animation
+  if (blinkState !== "open") {
+    // Use a fixed time step for more consistent animation
+    const timeStep = 16; // 16ms is approximately 60fps
+    blinkTimer += timeStep;
+
+    if (blinkState === "closing" && blinkTimer >= blinkDuration / 4) {
+      // Eyes closed
+      blinkState = "closed";
+      blinkTimer = 0;
+      console.log("Eyes now closed");
+    } else if (blinkState === "closed" && blinkTimer >= blinkDuration / 6) {
+      // Start opening eyes
+      blinkState = "opening";
+      blinkTimer = 0;
+      console.log("Eyes now opening");
+    } else if (blinkState === "opening" && blinkTimer >= blinkDuration / 4) {
+      // Eyes fully open
+      blinkState = "open";
+      blinkTimer = 0;
+      lastBlinkTime = currentTime; // Reset the last blink time when eyes fully open
+      console.log("Eyes now fully open");
+
+      // Check if we should do another blink in the sequence
+      if (consecutiveBlinkCount < maxConsecutiveBlinks && !nextBlinkTimeout) {
+        // Determine if we should do another blink based on probability
+        const blinkProbability =
+          consecutiveBlinkCount === 1
+            ? 0.7 // 70% chance for second blink
+            : consecutiveBlinkCount === 2
+            ? 0.4 // 40% chance for third blink
+            : 0; // No chance for more than 3 blinks
+
+        if (Math.random() < blinkProbability) {
+          // Schedule the next blink after a short delay
+          nextBlinkTimeout = setTimeout(() => {
+            blinkState = "closing";
+            blinkTimer = 0;
+            consecutiveBlinkCount++;
+            nextBlinkTimeout = null;
+            console.log("Starting consecutive blink #" + consecutiveBlinkCount);
+          }, 150);
+        } else {
+          // End the sequence
+          consecutiveBlinkCount = 0;
+        }
+      } else {
+        // Max consecutive blinks reached, end the sequence
+        consecutiveBlinkCount = 0;
+      }
+    }
+  }
+}
+
+/**
  * Draws the base character (body, legs, eyes, glasses)
  * @param {CanvasRenderingContext2D} ctx - The canvas context
  * @param {boolean} drawLegs - Whether to draw the default legs (default: true)
+ * @param {string} phase - Current game phase/state
  */
-function drawCharacterBase(ctx, drawLegs = true) {
+function drawCharacterBase(ctx, drawLegs = true, phase = "") {
   // Body
   drawRoundedRect(
     ctx,
@@ -88,13 +262,7 @@ function drawCharacterBase(ctx, drawLegs = true) {
   }
 
   // Eyes/Glasses
-  ctx.beginPath();
-  ctx.fillStyle = "white";
-  ctx.arc(3, -7, 3, 0, Math.PI * 2, false);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(-3, -7, 3, 0, Math.PI * 2, false);
-  ctx.fill();
+  drawEyes(ctx, phase);
 
   // Glasses frame
   ctx.strokeStyle = "#333";
@@ -111,6 +279,63 @@ function drawCharacterBase(ctx, drawLegs = true) {
   ctx.moveTo(0, -7);
   ctx.lineTo(3, -7);
   ctx.stroke();
+}
+
+/**
+ * Draws the character's eyes with blinking animation when in waiting phase
+ * @param {CanvasRenderingContext2D} ctx - The canvas context
+ * @param {string} phase - Current game phase/state
+ */
+function drawEyes(ctx, phase) {
+  ctx.fillStyle = "white";
+
+  // Default eye size
+  let eyeHeight = 3;
+  let eyeWidth = 3;
+
+  // Apply blinking animation only in waiting phase
+  if (phase === "waiting") {
+    // Calculate eye height based on blink state
+    if (blinkState === "closing") {
+      // Gradually close eyes - exaggerated cartoon effect
+      const progress = blinkTimer / (blinkDuration / 4);
+      eyeHeight = 3 * (1 - progress);
+      // Slightly widen eyes as they close for cartoon effect
+      eyeWidth = 3 + progress * 0.5;
+    } else if (blinkState === "closed") {
+      // Eyes almost closed for cartoon effect
+      eyeHeight = 0.3;
+      eyeWidth = 3.5; // Slightly wider when closed
+    } else if (blinkState === "opening") {
+      // Gradually open eyes - exaggerated cartoon effect
+      const progress = blinkTimer / (blinkDuration / 4);
+      eyeHeight = 0.3 + (3 - 0.3) * progress;
+      // Return to normal width
+      eyeWidth = 3.5 - progress * 0.5;
+    }
+  }
+
+  // Draw right eye
+  ctx.beginPath();
+  if (eyeHeight < 3) {
+    // Draw as ellipse when blinking
+    ctx.ellipse(3, -7, eyeWidth, eyeHeight, 0, 0, Math.PI * 2);
+  } else {
+    // Draw as circle when fully open
+    ctx.arc(3, -7, 3, 0, Math.PI * 2, false);
+  }
+  ctx.fill();
+
+  // Draw left eye
+  ctx.beginPath();
+  if (eyeHeight < 3) {
+    // Draw as ellipse when blinking
+    ctx.ellipse(-3, -7, eyeWidth, eyeHeight, 0, 0, Math.PI * 2);
+  } else {
+    // Draw as circle when fully open
+    ctx.arc(-3, -7, 3, 0, Math.PI * 2, false);
+  }
+  ctx.fill();
 }
 
 /**
@@ -349,8 +574,26 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
     drawRunningState: drawRunningState,
     drawCrashingState: drawCrashingState,
     drawRoundedRect: drawRoundedRect,
+    updateBlinkState: updateBlinkState,
     heroWidth: heroWidth,
     heroHeight: heroHeight,
+    // Expose blinking state variables
+    getBlinkState: function () {
+      return {
+        blinkState: blinkState,
+        blinkTimer: blinkTimer,
+        lastBlinkTime: lastBlinkTime,
+        consecutiveBlinkCount: consecutiveBlinkCount,
+      };
+    },
+    // Allow manual triggering of blinks for testing
+    triggerBlink: function () {
+      blinkState = "closing";
+      blinkTimer = 0;
+      consecutiveBlinkCount = 1;
+      lastBlinkTime = Date.now();
+      console.log("Manually triggered blink");
+    },
   };
 });
 
