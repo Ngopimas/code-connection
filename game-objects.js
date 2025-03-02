@@ -1,5 +1,3 @@
-import { config } from "./utils.js";
-
 // Platform class
 export class Platform {
   constructor(x, w, id) {
