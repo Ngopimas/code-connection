@@ -33,18 +33,18 @@ A developer-themed platform game where you connect code blocks by building bridg
 
 This game is built with pure HTML5, CSS3, and JavaScript with no external dependencies. It uses a canvas element for the game rendering.
 
-### Credits
+You can check every animation of the character in the [Character Showcase](https://ngopimas.github.io/code-connection/character-showcase.html).
 
-- Original game concept based on the work by Hunor Marton Borbely
-- Retheming and additional features by Romain C.
-
-## Future Improvements
-
-Potential improvements for the future:
+## Potential Improvements
 
 - Add sound effects (keyboard typing, deployment sounds)
 - Add different levels with different themes
-- Add powerups (coffee boost, debugging tools?)
+- Add powerups (coffee boost?)
+
+## Credits
+
+- Original game concept based on the work by [Hunor Marton Borbely](https://codepen.io/HunorMarton/pen/xxOMQKg)
+- Retheming and additional features by [Romain C.](https://github.com/ngopimas)
 
 ## Contributing
 
