@@ -65,18 +65,12 @@ function setupGlobalBlinkInterval() {
       forceBlinkCheck = false;
       lastBlinkTime = Date.now(); // Update last blink time
 
-      // For debugging
-      console.log("Global interval triggered blink");
-
       // Reset force check after a delay
       setTimeout(() => {
         forceBlinkCheck = true;
       }, timeBetweenBlinks);
     }
   }, checkInterval); // Check more frequently in documentation pages
-
-  // For debugging
-  console.log("Global blink interval set up");
 
   return globalBlinkInterval;
 }
@@ -141,9 +135,6 @@ function drawCharacter(ctx, phase, heroX, heroY, canvasHeight, platformHeight) {
         lastBlinkTime = now;
         forceBlinkCheck = false;
 
-        // For debugging
-        console.log("Force check triggered blink");
-
         // Reset force check after a delay
         setTimeout(() => {
           forceBlinkCheck = true;
@@ -206,7 +197,6 @@ function updateBlinkState() {
     blinkState = "closing";
     blinkTimer = 0;
     consecutiveBlinkCount = 1;
-    console.log("updateBlinkState triggered new blink");
     return;
   }
 
@@ -231,18 +221,15 @@ function updateBlinkState() {
       // Eyes closed
       blinkState = "closed";
       blinkTimer = 0;
-      console.log("Eyes now closed");
     } else if (blinkState === "closed" && blinkTimer >= closedDuration) {
       // Start opening eyes
       blinkState = "opening";
       blinkTimer = 0;
-      console.log("Eyes now opening");
     } else if (blinkState === "opening" && blinkTimer >= openingThreshold) {
       // Eyes fully open
       blinkState = "open";
       blinkTimer = 0;
       lastBlinkTime = currentTime; // Reset the last blink time when eyes fully open
-      console.log("Eyes now fully open");
 
       // Check if we should do another blink in the sequence
       if (consecutiveBlinkCount < maxConsecutiveBlinks && !nextBlinkTimeout) {
@@ -265,7 +252,6 @@ function updateBlinkState() {
             blinkTimer = 0;
             consecutiveBlinkCount++;
             nextBlinkTimeout = null;
-            console.log("Starting consecutive blink #" + consecutiveBlinkCount);
           }, delay);
         } else {
           // End the sequence
@@ -611,7 +597,6 @@ function triggerBlink() {
   blinkTimer = 0;
   consecutiveBlinkCount = 1;
   lastBlinkTime = Date.now();
-  console.log("Manually triggered blink");
 }
 
 // Export the module for use in both browser and Node.js environments

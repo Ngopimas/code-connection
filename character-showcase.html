@@ -211,14 +211,6 @@
             </div>
 
             <div class="option-group">
-                <label class="option-label">Animation Speed</label>
-                <div class="slider-container">
-                    <input type="range" id="speed-slider" min="0.1" max="2" step="0.1" value="1">
-                    <span class="value-display" id="speed-value">1.0</span>
-                </div>
-            </div>
-
-            <div class="option-group">
                 <label class="option-label">Background Color</label>
                 <div class="color-picker-container">
                     <input type="color" id="bg-color-picker" value="#718096">
@@ -262,7 +254,7 @@
         </div>
     </div>
 
-    <script src="./character-reference.js"></script>
+    <script src="./js/character-reference.js"></script>
     <script>
         // Main canvas setup
         const mainCanvas = document.getElementById('main-canvas');
@@ -309,12 +301,18 @@
         // Animation state
         let currentPhase = 'waiting';
         let scale = 3.0;
-        let speed = 1.0;
         let bgColor = '#718096';
         let showGrid = false;
         let playAllMode = false;
         let playAllIndex = 0;
         let playAllTimer = null;
+
+        // Custom blink animation implementation
+        let customBlinkState = 'open'; // 'open', 'closing', 'closed', 'opening'
+        let customBlinkTimer = 0;
+        let lastCustomBlinkTime = Date.now();
+        let customBlinkDuration = 600; // Duration of a complete blink in ms
+        let timeBetweenCustomBlinks = 3000; // Time between blinks in ms
 
         // Control buttons
         const controlButtons = document.querySelectorAll('.control-button[data-phase]');
@@ -433,13 +431,6 @@
             scaleValue.textContent = scale.toFixed(1);
         });
 
-        const speedSlider = document.getElementById('speed-slider');
-        const speedValue = document.getElementById('speed-value');
-        speedSlider.addEventListener('input', () => {
-            speed = parseFloat(speedSlider.value);
-            speedValue.textContent = speed.toFixed(1);
-        });
-
         const bgColorPicker = document.getElementById('bg-color-picker');
         const bgColorValue = document.getElementById('bg-color-value');
         bgColorPicker.addEventListener('input', () => {
@@ -493,20 +484,213 @@
             ctx.restore();
         }
 
-        // Main animation function
-        function animate() {
-            // Instead of overriding Date.now, store the original for consistent timing
+        // Custom function to update blink state
+        function updateCustomBlinkState() {
             const currentTime = Date.now();
 
-            // Explicitly set documentation mode on first animation frame
+            // Only update blink state for waiting phase
+            if (currentPhase !== 'waiting') {
+                customBlinkState = 'open';
+                customBlinkTimer = 0;
+                return;
+            }
+
+            // Check if it's time to start a new blink
+            if (customBlinkState === 'open' && currentTime - lastCustomBlinkTime > timeBetweenCustomBlinks) {
+                customBlinkState = 'closing';
+                customBlinkTimer = 0;
+                return;
+            }
+
+            // Update ongoing blink animation
+            if (customBlinkState !== 'open') {
+                // Use a fixed time step for more consistent animation
+                const timeStep = 16; // 16ms is approximately 60fps
+                customBlinkTimer += timeStep;
+
+                const closingThreshold = customBlinkDuration / 3;
+                const closedDuration = customBlinkDuration / 4;
+                const openingThreshold = customBlinkDuration / 3;
+
+                if (customBlinkState === 'closing' && customBlinkTimer >= closingThreshold) {
+                    // Eyes closed
+                    customBlinkState = 'closed';
+                    customBlinkTimer = 0;
+                } else if (customBlinkState === 'closed' && customBlinkTimer >= closedDuration) {
+                    // Start opening eyes
+                    customBlinkState = 'opening';
+                    customBlinkTimer = 0;
+                } else if (customBlinkState === 'opening' && customBlinkTimer >= openingThreshold) {
+                    // Eyes fully open
+                    customBlinkState = 'open';
+                    customBlinkTimer = 0;
+                    lastCustomBlinkTime = currentTime;
+                }
+            }
+        }
+
+        // Custom function to draw eyes with blinking
+        function drawCustomEyes(ctx) {
+            ctx.fillStyle = "white";
+
+            // Default eye size
+            let eyeHeight = 3;
+            let eyeWidth = 3;
+
+            // Calculate eye height based on blink state
+            if (customBlinkState === 'closing') {
+                // Gradually close eyes
+                const progress = customBlinkTimer / (customBlinkDuration / 3);
+                eyeHeight = 3 * (1 - progress);
+                // Slightly widen eyes as they close for cartoon effect
+                eyeWidth = 3 + progress * 0.7;
+            } else if (customBlinkState === 'closed') {
+                // Eyes almost closed
+                eyeHeight = 0.2;
+                eyeWidth = 3.7;
+            } else if (customBlinkState === 'opening') {
+                // Gradually open eyes
+                const progress = customBlinkTimer / (customBlinkDuration / 3);
+                eyeHeight = 0.2 + (3 - 0.2) * progress;
+                // Return to normal width
+                eyeWidth = 3.7 - progress * 0.7;
+            }
+
+            // Draw right eye
+            ctx.beginPath();
+            if (eyeHeight < 3) {
+                // Draw as ellipse when blinking
+                ctx.ellipse(3, -7, eyeWidth, eyeHeight, 0, 0, Math.PI * 2);
+            } else {
+                // Draw as circle when fully open
+                ctx.arc(3, -7, 3, 0, Math.PI * 2, false);
+            }
+            ctx.fill();
+
+            // Draw left eye
+            ctx.beginPath();
+            if (eyeHeight < 3) {
+                // Draw as ellipse when blinking
+                ctx.ellipse(-3, -7, eyeWidth, eyeHeight, 0, 0, Math.PI * 2);
+            } else {
+                // Draw as circle when fully open
+                ctx.arc(-3, -7, 3, 0, Math.PI * 2, false);
+            }
+            ctx.fill();
+        }
+
+        // Custom function to draw character base with custom eyes
+        function drawCustomCharacterBase(ctx) {
+            // Body
+            ctx.fillStyle = "black";
+            drawRoundedRect(
+                ctx,
+                -8.5,
+                -15,
+                17,
+                26,
+                5
+            );
+
+            // Legs
+            const legDistance = 5;
+            ctx.beginPath();
+            ctx.arc(legDistance, 11.5, 3, 0, Math.PI * 2, false);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(-legDistance, 11.5, 3, 0, Math.PI * 2, false);
+            ctx.fill();
+
+            // Draw custom eyes with blinking
+            drawCustomEyes(ctx);
+
+            // Glasses frame
+            ctx.strokeStyle = "#333";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(3, -7, 3.5, 0, Math.PI * 2, false);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(-3, -7, 3.5, 0, Math.PI * 2, false);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, -7);
+            ctx.lineTo(-3, -7);
+            ctx.moveTo(0, -7);
+            ctx.lineTo(3, -7);
+            ctx.stroke();
+        }
+
+        // Custom function to draw waiting state
+        function drawCustomWaitingState(ctx) {
+            // Draw character base with custom eyes
+            drawCustomCharacterBase(ctx);
+
+            // Left hand holding laptop
+            ctx.fillStyle = "black";
+            ctx.beginPath();
+            ctx.arc(-8, 5, 2.5, 0, Math.PI * 2, false); // left hand
+            ctx.fill();
+
+            // Folded laptop
+            const laptopWidth = 10;
+            const laptopHeight = 7;
+
+            // Laptop base (bottom part)
+            ctx.fillStyle = "#4A5568"; // Dark gray
+            ctx.fillRect(-13, 5, laptopWidth, laptopHeight / 2);
+
+            // Laptop screen (top part)
+            ctx.fillStyle = "#2D3748"; // Darker gray
+            ctx.fillRect(-13, 5 - laptopHeight / 2, laptopWidth, laptopHeight / 2);
+
+            // Screen inner part
+            ctx.fillStyle = "#1A202C"; // Almost black
+            ctx.fillRect(
+                -12,
+                5 - laptopHeight / 2 + 1,
+                laptopWidth - 2,
+                laptopHeight / 2 - 2
+            );
+
+            // Laptop logo
+            ctx.fillStyle = "#63B3ED"; // Light blue
+            ctx.beginPath();
+            ctx.arc(-8, 5 - laptopHeight / 4, 1, 0, Math.PI * 2, false);
+            ctx.fill();
+        }
+
+        // Helper function to draw a rounded rectangle
+        function drawRoundedRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Trigger a custom blink
+        function triggerCustomBlink() {
+            customBlinkState = 'closing';
+            customBlinkTimer = 0;
+        }
+
+        // Main animation function
+        function animate() {
+            // Get current time for animation timing
+            const currentTime = Date.now();
+
+            // Set documentation mode on first animation frame
             if (!window.documentationModeSet) {
                 CharacterReference.setDocumentationMode(true);
                 window.documentationModeSet = true;
-
-                // Force an initial blink after a short delay
-                setTimeout(() => {
-                    CharacterReference.triggerBlink();
-                }, 500);
             }
 
             // Clear main canvas
@@ -522,6 +706,9 @@
             const platformHeight = 50;
             mainCtx.fillStyle = "#2D3748";
             mainCtx.fillRect(0, mainCanvas.height - platformHeight, mainCanvas.width, platformHeight);
+
+            // Update custom blink state
+            updateCustomBlinkState();
 
             // Draw character on main canvas with scaling
             // Create an offscreen canvas to draw the character at normal scale
@@ -547,27 +734,24 @@
             offscreenCtx.save();
             offscreenCtx.scale(resolutionMultiplier, resolutionMultiplier);
 
-            // Force blinking update for waiting phase
-            if (currentPhase === "waiting") {
-                // Ensure the blinking is updated regardless of speed setting
-                CharacterReference.updateBlinkState();
-
-                // Every few seconds, ensure we have at least one blink
-                // This helps with visibility
-                if (Date.now() - lastForcedBlink > 5000) {
-                    CharacterReference.triggerBlink();
-                    lastForcedBlink = Date.now();
-                }
+            // Use custom drawing for waiting state with blinking
+            if (currentPhase === 'waiting') {
+                offscreenCtx.translate(
+                    offscreenCanvas.width / (2 * resolutionMultiplier),
+                    offscreenCanvas.height / resolutionMultiplier - offscreenPlatformHeight / resolutionMultiplier - 15
+                );
+                drawCustomWaitingState(offscreenCtx);
+            } else {
+                // Use the library's drawing for other states
+                CharacterReference.drawCharacter(
+                    offscreenCtx,
+                    currentPhase,
+                    offscreenCanvas.width / (2 * resolutionMultiplier) + 8.5,
+                    0,
+                    offscreenCanvas.height / resolutionMultiplier,
+                    offscreenPlatformHeight / resolutionMultiplier
+                );
             }
-
-            CharacterReference.drawCharacter(
-                offscreenCtx,
-                currentPhase,
-                offscreenCanvas.width / (2 * resolutionMultiplier),
-                0,
-                offscreenCanvas.height / resolutionMultiplier,
-                offscreenPlatformHeight / resolutionMultiplier
-            );
             offscreenCtx.restore();
 
             // Now draw the scaled offscreen canvas to the main canvas
@@ -601,30 +785,35 @@
                 ctx.fillStyle = "#2D3748";
                 ctx.fillRect(0, 120 - miniPlatformHeight, 120, miniPlatformHeight);
 
-                // For waiting phase mini canvases, ensure blink state is updated
-                if (phase === "waiting") {
-                    // No need to update blinking state for each canvas - the main update above is enough
-                    // Just draw the character with current state
-                }
-
                 // Draw character
-                CharacterReference.drawCharacter(ctx, phase, 60, 0, 120, miniPlatformHeight);
+                if (phase === 'waiting') {
+                    // Use custom drawing for waiting state with blinking
+                    ctx.save();
+                    ctx.translate(60, 120 - miniPlatformHeight - 15);
+                    drawCustomWaitingState(ctx);
+                    ctx.restore();
+                } else {
+                    // Use the library's drawing for other states
+                    CharacterReference.drawCharacter(ctx, phase, 60 + 8.5, 0, 120, miniPlatformHeight);
+                }
             });
 
-            // Continue animation loop at proper speed
-            // Speed affects the frequency of animation frames, not the timestamps
-            if (speed === 1.0) {
-                requestAnimationFrame(animate);
-            } else {
-                setTimeout(() => requestAnimationFrame(animate), 1000 / 60 * (1 / speed - 1));
-            }
+            // Continue animation loop
+            requestAnimationFrame(animate);
         }
 
-        // Track when we last forced a blink
-        let lastForcedBlink = Date.now();
+        // Add a click handler to trigger blinks manually
+        mainCanvas.addEventListener('click', () => {
+            if (currentPhase === 'waiting') {
+                triggerCustomBlink();
+            }
+        });
 
         // Start animation
         animate();
+
+        // Trigger an initial blink after a short delay
+        setTimeout(triggerCustomBlink, 1000);
     </script>
 </body>
 
