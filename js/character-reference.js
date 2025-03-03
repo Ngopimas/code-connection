@@ -558,39 +558,58 @@ function drawRunningState(ctx) {
  * @param {CanvasRenderingContext2D} ctx - The canvas context
  */
 function drawCrashingState(ctx) {
-  // Laptop base
-  const laptopWidth = 14;
-  const laptopHeight = 2;
-  ctx.fillStyle = "#4A5568"; // Dark gray
-  ctx.fillRect(-laptopWidth / 2, -22, laptopWidth, laptopHeight);
+  // Laptop positioned above head
+  ctx.save();
+  ctx.translate(0, -16);
 
-  // Laptop screen (open and above head)
-  ctx.fillStyle = "#2D3748"; // Darker gray
-  ctx.fillRect(-laptopWidth / 2, -22 - 10, laptopWidth, 10);
+  // Laptop base
+  ctx.fillStyle = "#666";
+  ctx.fillRect(-8, -3, 16, 2);
+
+  // Laptop screen
+  ctx.fillStyle = "#333";
+  ctx.fillRect(-7, -15, 14, 12);
 
   // Screen inner part
-  ctx.fillStyle = "#1A202C"; // Almost black
-  ctx.fillRect(-laptopWidth / 2 + 1, -22 - 9, laptopWidth - 2, 8);
+  ctx.fillStyle = "#CD5C5C"; // red error screen - Indian Red, a more muted red that fits the theme
+  ctx.fillRect(-6, -14, 12, 10);
 
-  // Laptop logo
-  ctx.fillStyle = "#63B3ED"; // Light blue
+  // Draw a bomb icon
+  // Bomb body (circle)
+  ctx.fillStyle = "#333";
   ctx.beginPath();
-  ctx.arc(0, -22 - 5, 1, 0, Math.PI * 2, false);
+  ctx.arc(-1, -8, 3, 0, Math.PI * 2);
   ctx.fill();
 
-  // Add some motion lines to show it's falling
+  // Bomb fuse
+  ctx.strokeStyle = "#333";
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(0, -11);
+  ctx.quadraticCurveTo(2, -12, 3, -10);
+  ctx.stroke();
+
+  // Bomb highlight
+  ctx.fillStyle = "#FFF";
+  ctx.beginPath();
+  ctx.arc(-2, -9, 0.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Add some motion lines to show it's falling/crashing
   ctx.strokeStyle = "#CBD5E0";
   ctx.lineWidth = 0.5;
   ctx.beginPath();
-  ctx.moveTo(-laptopWidth / 2 - 3, -22);
-  ctx.lineTo(-laptopWidth / 2 - 1, -24);
-  ctx.moveTo(-laptopWidth / 2 - 5, -20);
-  ctx.lineTo(-laptopWidth / 2 - 3, -22);
-  ctx.moveTo(laptopWidth / 2 + 3, -22);
-  ctx.lineTo(laptopWidth / 2 + 1, -24);
-  ctx.moveTo(laptopWidth / 2 + 5, -20);
-  ctx.lineTo(laptopWidth / 2 + 3, -22);
+  ctx.moveTo(-12, -5);
+  ctx.lineTo(-10, -7);
+  ctx.moveTo(-14, -3);
+  ctx.lineTo(-12, -5);
+  ctx.moveTo(12, -5);
+  ctx.lineTo(10, -7);
+  ctx.moveTo(14, -3);
+  ctx.lineTo(12, -5);
   ctx.stroke();
+
+  ctx.restore();
 }
 
 /**
