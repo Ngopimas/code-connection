@@ -12,24 +12,38 @@
  * - crashing: Falling with laptop above head
  */
 
-// Constants for character dimensions
+// ===== Character Dimensions =====
 const heroWidth = 17;
 const heroHeight = 30;
 
-// Blinking animation variables
-let blinkTimer = 0;
+// ===== Blinking Animation Configuration =====
+// Core blinking state
 let blinkState = "open"; // 'open', 'closing', 'closed', 'opening'
-let blinkDuration = 400; // Duration of a complete blink in ms (reduced for more natural effect)
-let timeBetweenBlinks = 4000; // Time between blinks in ms (4 seconds)
+let blinkTimer = 0;
 let lastBlinkTime = Date.now();
+
+// Blink timing configuration (can be adjusted based on context)
+let blinkDuration = 400; // Duration of a complete blink in ms
+let timeBetweenBlinks = 4000; // Time between blinks in ms (4 seconds)
+
+// Consecutive blink behavior
 let consecutiveBlinkCount = 0; // Track how many blinks have occurred in sequence
 let maxConsecutiveBlinks = 3; // Maximum number of consecutive blinks
 let nextBlinkTimeout = null; // Store the timeout ID
+
+// Blink control
 let forceBlinkCheck = true; // Force a blink check on next frame
 let globalBlinkInterval = null; // Store the global interval ID
+
+// Context detection
 let isDocumentationContext = false; // Flag to identify documentation context
 
-// Set up a global interval to trigger blinks (helps with showcase pages)
+// ===== Blink Management Functions =====
+
+/**
+ * Set up a global interval to trigger blinks (helps with showcase pages)
+ * @returns {number} The interval ID
+ */
 function setupGlobalBlinkInterval() {
   // Clear any existing interval
   if (globalBlinkInterval) {
@@ -70,115 +84,9 @@ function setupGlobalBlinkInterval() {
         forceBlinkCheck = true;
       }, timeBetweenBlinks);
     }
-  }, checkInterval); // Check more frequently in documentation pages
+  }, checkInterval);
 
   return globalBlinkInterval;
-}
-
-// Initialize the global blink interval on script load
-window.addEventListener("DOMContentLoaded", () => {
-  if (!globalBlinkInterval) {
-    globalBlinkInterval = setupGlobalBlinkInterval();
-
-    // Force an initial blink after a short delay to show the animation is working
-    setTimeout(() => {
-      triggerBlink();
-    }, 1000);
-  }
-});
-
-// Add a more frequent blink timer update
-setInterval(() => {
-  if (blinkState !== "open") {
-    updateBlinkState();
-  }
-}, 16); // Update every ~16ms for smooth animation
-
-// Make sure the interval is maintained even if the tab loses focus
-window.addEventListener("focus", () => {
-  if (!globalBlinkInterval) {
-    globalBlinkInterval = setupGlobalBlinkInterval();
-  }
-});
-
-/**
- * Main character drawing function
- * @param {CanvasRenderingContext2D} ctx - The canvas context
- * @param {string} phase - Current game phase/state
- * @param {number} heroX - X position of hero
- * @param {number} heroY - Y position of hero
- * @param {number} canvasHeight - Height of the canvas
- * @param {number} platformHeight - Height of the platforms
- */
-function drawCharacter(ctx, phase, heroX, heroY, canvasHeight, platformHeight) {
-  ctx.save();
-  ctx.fillStyle = "black";
-  ctx.translate(
-    heroX - heroWidth / 2,
-    heroY + canvasHeight - platformHeight - heroHeight / 2
-  );
-
-  // Update blink timer if in waiting phase
-  if (phase === "waiting") {
-    // Make sure the global blink interval is active
-    if (!globalBlinkInterval) {
-      globalBlinkInterval = setupGlobalBlinkInterval();
-    }
-
-    // Force a blink check periodically to ensure animation works in all contexts
-    if (forceBlinkCheck) {
-      const now = Date.now();
-      if (now - lastBlinkTime > timeBetweenBlinks) {
-        blinkState = "closing";
-        blinkTimer = 0;
-        consecutiveBlinkCount = 1;
-        lastBlinkTime = now;
-        forceBlinkCheck = false;
-
-        // Reset force check after a delay
-        setTimeout(() => {
-          forceBlinkCheck = true;
-        }, timeBetweenBlinks);
-      }
-    }
-
-    // Always update blink state when in waiting phase
-    updateBlinkState();
-  } else {
-    // Reset blink state when not in waiting phase
-    blinkState = "open";
-    consecutiveBlinkCount = 0;
-    if (nextBlinkTimeout) {
-      clearTimeout(nextBlinkTimeout);
-      nextBlinkTimeout = null;
-    }
-  }
-
-  // Draw the base character (common to all states)
-  // Don't draw legs in running state as we'll draw animated legs instead
-  drawCharacterBase(ctx, phase !== "running" && phase !== "migrating", phase);
-
-  // Draw state-specific elements
-  switch (phase) {
-    case "waiting":
-      drawWaitingState(ctx);
-      break;
-    case "coding":
-      drawCodingState(ctx, true); // true for animated code
-      break;
-    case "deploying":
-      drawCodingState(ctx, false); // false for static code
-      break;
-    case "running":
-    case "migrating": // Use the same animation for migrating as for running
-      drawRunningState(ctx);
-      break;
-    case "crashing":
-      drawCrashingState(ctx);
-      break;
-  }
-
-  ctx.restore();
 }
 
 /**
@@ -263,6 +171,124 @@ function updateBlinkState() {
       }
     }
   }
+}
+
+/**
+ * Helper function to trigger a blink manually
+ */
+function triggerBlink() {
+  blinkState = "closing";
+  blinkTimer = 0;
+  consecutiveBlinkCount = 1;
+  lastBlinkTime = Date.now();
+}
+
+// ===== Initialize Blink System =====
+window.addEventListener("DOMContentLoaded", () => {
+  if (!globalBlinkInterval) {
+    globalBlinkInterval = setupGlobalBlinkInterval();
+
+    // Force an initial blink after a short delay to show the animation is working
+    setTimeout(() => {
+      triggerBlink();
+    }, 1000);
+  }
+});
+
+// Add a more frequent blink timer update
+setInterval(() => {
+  if (blinkState !== "open") {
+    updateBlinkState();
+  }
+}, 16); // Update every ~16ms for smooth animation
+
+// Make sure the interval is maintained even if the tab loses focus
+window.addEventListener("focus", () => {
+  if (!globalBlinkInterval) {
+    globalBlinkInterval = setupGlobalBlinkInterval();
+  }
+});
+
+// ===== Character Drawing Functions =====
+
+/**
+ * Main character drawing function
+ * @param {CanvasRenderingContext2D} ctx - The canvas context
+ * @param {string} phase - Current game phase/state
+ * @param {number} heroX - X position of hero
+ * @param {number} heroY - Y position of hero
+ * @param {number} canvasHeight - Height of the canvas
+ * @param {number} platformHeight - Height of the platforms
+ */
+function drawCharacter(ctx, phase, heroX, heroY, canvasHeight, platformHeight) {
+  ctx.save();
+  ctx.fillStyle = "black";
+  ctx.translate(
+    heroX - heroWidth / 2,
+    heroY + canvasHeight - platformHeight - heroHeight / 2
+  );
+
+  // Update blink timer if in waiting phase
+  if (phase === "waiting") {
+    // Make sure the global blink interval is active
+    if (!globalBlinkInterval) {
+      globalBlinkInterval = setupGlobalBlinkInterval();
+    }
+
+    // Force a blink check periodically to ensure animation works in all contexts
+    if (forceBlinkCheck) {
+      const now = Date.now();
+      if (now - lastBlinkTime > timeBetweenBlinks) {
+        blinkState = "closing";
+        blinkTimer = 0;
+        consecutiveBlinkCount = 1;
+        lastBlinkTime = now;
+        forceBlinkCheck = false;
+
+        // Reset force check after a delay
+        setTimeout(() => {
+          forceBlinkCheck = true;
+        }, timeBetweenBlinks);
+      }
+    }
+
+    // Always update blink state when in waiting phase
+    updateBlinkState();
+  } else {
+    // Reset blink state when not in waiting phase
+    blinkState = "open";
+    consecutiveBlinkCount = 0;
+    if (nextBlinkTimeout) {
+      clearTimeout(nextBlinkTimeout);
+      nextBlinkTimeout = null;
+    }
+  }
+
+  // Draw the base character (common to all states)
+  // Don't draw legs in running state as we'll draw animated legs instead
+  drawCharacterBase(ctx, phase !== "running" && phase !== "migrating", phase);
+
+  // Draw state-specific elements
+  switch (phase) {
+    case "waiting":
+      drawWaitingState(ctx);
+      break;
+    case "coding":
+      drawCodingState(ctx, true); // true for animated code
+      break;
+    case "deploying":
+      drawCodingState(ctx, false); // false for static code
+      break;
+    case "running":
+    case "migrating": // Use the same animation for migrating as for running
+      drawRunningState(ctx);
+      break;
+    case "crashing":
+      drawCrashingState(ctx);
+      break;
+  }
+
+  ctx.restore();
 }
 
 /**
@@ -591,14 +617,7 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
   ctx.fill();
 }
 
-// Helper function to trigger a blink manually
-function triggerBlink() {
-  blinkState = "closing";
-  blinkTimer = 0;
-  consecutiveBlinkCount = 1;
-  lastBlinkTime = Date.now();
-}
-
+// ===== Module Export =====
 // Export the module for use in both browser and Node.js environments
 (function (root, factory) {
   if (typeof define === "function" && define.amd) {
@@ -670,7 +689,7 @@ function triggerBlink() {
  * drawCharacter(ctx, phase, 100, 0, 375, 100);
  */
 
-// Color palette reference
+// ===== Color palette reference =====
 const colors = {
   black: "black",
   white: "white",
